@@ -17,8 +17,14 @@ import { cn } from '@/lib/utils'
  * organisers (the Refs page itself also gates content, so a deep-link
  * to /refs by a non-organiser still lands somewhere reasonable).
  */
-const TABS: Array<{ to: string; label: string; orgOnly?: boolean }> = [
+const TABS: Array<{
+  to: string
+  label: string
+  orgOnly?: boolean
+  refOnly?: boolean
+}> = [
   { to: '/',          label: 'Home' },
+  { to: '/my-games',  label: 'My Games', refOnly: true },
   { to: '/schedule',  label: 'Schedule' },
   { to: '/bracket',   label: 'Bracket' },
   { to: '/standings', label: 'Standings' },
@@ -70,7 +76,11 @@ export function AppShell() {
         </div>
 
         <nav className="flex overflow-x-auto bg-neutral-900 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {TABS.filter((t) => !t.orgOnly || role === 'organiser').map((t) => (
+          {TABS.filter((t) => {
+            if (t.orgOnly) return role === 'organiser'
+            if (t.refOnly) return role === 'ref'
+            return true
+          }).map((t) => (
             <NavLink
               key={t.to}
               to={t.to}

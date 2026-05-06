@@ -7,6 +7,7 @@ import { Bracket } from '@/pages/Bracket'
 import { Standings } from '@/pages/Standings'
 import { Teams } from '@/pages/Teams'
 import { Refs } from '@/pages/Refs'
+import { MyGames } from '@/pages/MyGames'
 import { Account } from '@/pages/Account'
 import { useInitialSync } from '@/hooks/useInitialSync'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="standings" element={<Standings />} />
             <Route path="teams" element={<Teams />} />
             <Route path="refs" element={<Refs />} />
+            <Route path="my-games" element={<MyGames />} />
             <Route path="account" element={<Account />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
