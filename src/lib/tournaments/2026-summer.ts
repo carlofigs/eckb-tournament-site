@@ -70,14 +70,31 @@ export const summer2026: Tournament = {
     { id: 15, round: 'F',  time: '4:00 pm',  field: 'Middle Field', teamA: { winnerOf: 13 }, teamB: { winnerOf: 14 }, packUp: 'Loser packs up Middle Field' },
   ],
 
+  // Roster compiled from the league's first 6 games of refereeing
+  // history. Sorted alphabetically for scannability. Head-eligibility
+  // mirrors who has actually run the plate at least once across that
+  // history; everyone else is line-only.
+  //
+  // The live DB is the source of truth — this list only seeds an
+  // empty DB on first run. After seeding (or any in-app edit), changes
+  // happen via the Refs page roster editor.
   refs: [
-    { id: 'r1', name: 'Alex',   headEligible: true  },
-    { id: 'r2', name: 'Sam',    headEligible: true  },
-    { id: 'r3', name: 'Pat',    headEligible: true  },
-    { id: 'r4', name: 'Jamie',  headEligible: false },
-    { id: 'r5', name: 'Robin',  headEligible: false },
-    { id: 'r6', name: 'Casey',  headEligible: false },
-    { id: 'r7', name: 'Morgan', headEligible: false },
+    { id: 'r1',  name: "Aaron O'Meara",       headEligible: false },
+    { id: 'r2',  name: 'Andy Eisenberg',      headEligible: true  },
+    { id: 'r3',  name: 'Anthony Phan',        headEligible: false },
+    { id: 'r4',  name: 'Ben Woodlock',        headEligible: true  },
+    { id: 'r5',  name: 'Cameron Sidious',     headEligible: true  },
+    { id: 'r6',  name: 'Carlo Figueroa',      headEligible: false },
+    { id: 'r7',  name: 'Dan Walton',          headEligible: false },
+    { id: 'r8',  name: 'Jack Foulstone',      headEligible: false },
+    { id: 'r9',  name: 'Josh Grolman',        headEligible: true  },
+    { id: 'r10', name: 'Justin Koonin',       headEligible: true  },
+    { id: 'r11', name: 'Lachlan Pedan',       headEligible: true  },
+    { id: 'r12', name: 'Laurence Barber',     headEligible: true  },
+    { id: 'r13', name: 'Scott Paschke',       headEligible: true  },
+    { id: 'r14', name: 'Steven Intervention', headEligible: true  },
+    { id: 'r15', name: 'Tom Elphick',         headEligible: false },
+    { id: 'r16', name: 'Zack Krause',         headEligible: true  },
   ],
 
   linesPerGame: 2,
