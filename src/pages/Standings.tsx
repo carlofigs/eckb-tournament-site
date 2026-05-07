@@ -27,7 +27,7 @@ export function Standings() {
             advances to Game 12 as the 8th QF team. Sorted by:
           </p>
           <ol className="list-decimal pl-5 space-y-0.5">
-            <li>Run differential (higher is better)</li>
+            <li>Margin of loss (lower is better — lost by 1 ranks above lost by 9)</li>
             <li>Lowest combined game score (5-4 ranks above 9-8)</li>
             <li>
               Head-to-head <em>(n/a in this format — every R1 loser is from a
@@ -74,7 +74,7 @@ function LoserTable({ losers }: { losers: ReturnType<typeof r1Losers> }) {
             <th className="px-2 py-2 font-extrabold">#</th>
             <th className="px-2 py-2 font-extrabold text-left">Team</th>
             <th className="px-2 py-2 font-extrabold">R1 Game</th>
-            <th className="px-2 py-2 font-extrabold">Run Diff</th>
+            <th className="px-2 py-2 font-extrabold">Lost by</th>
             <th className="px-2 py-2 font-extrabold">RS</th>
             <th className="px-2 py-2 font-extrabold">RA</th>
           </tr>
@@ -101,10 +101,7 @@ function LoserTable({ losers }: { losers: ReturnType<typeof r1Losers> }) {
                   </span>
                 </td>
                 <td className="px-2 py-2">G{l.gameId}</td>
-                <td className="px-2 py-2">
-                  {l.runDiff > 0 ? '+' : ''}
-                  {l.runDiff}
-                </td>
+                <td className="px-2 py-2">{Math.abs(l.runDiff)}</td>
                 <td className="px-2 py-2">{l.runs}</td>
                 <td className="px-2 py-2">{l.allowed}</td>
               </tr>

@@ -16,7 +16,11 @@ import { isComplete } from '@/lib/games'
  * The first criterion to break a tie wins; if all tie, we fall back
  * to game number ascending so the result is deterministic.
  *
- * 1. runDiff       — runs scored minus runs allowed
+ * 1. marginOfLoss  — runs scored minus runs allowed. For losers
+ *      this is always negative; HIGHER (closer to 0) is better,
+ *      i.e. the team that lost by the smallest margin. The UI
+ *      displays the absolute value as "Lost by X" since "lower X
+ *      = better" reads more naturally for non-stats folks.
  * 2. lowGameTotal  — combined runs in the game (loser's runs +
  *      winner's runs); LOWER total wins. Rationale: a tight low-
  *      scoring loss (5-4, total 9) reflects better defence than a
