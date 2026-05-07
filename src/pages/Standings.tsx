@@ -1,28 +1,36 @@
 import { TOURNAMENT } from '@/lib/tournament'
 import { useTournamentStore } from '@/store/tournament'
-import { r1Losers, rankLosers } from '@/lib/star'
-import { isComplete } from '@/lib/games'
+import { r1Losers, rankLosers, computeStarTeam } from '@/lib/star'
+import { isComplete, getWinner, getLoser } from '@/lib/games'
 import { Swatch } from '@/components/Swatch'
 import { cn } from '@/lib/utils'
+import type { TeamName } from '@/lib/schemas'
 
 export function Standings() {
   const games = useTournamentStore((s) => s.games)
   const losers = r1Losers(TOURNAMENT, games)
 
   return (
-    <section>
-      <h2 className="text-xl font-extrabold mb-3">
-        Round 1 Standings (Star contention)
-      </h2>
-      <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-lg p-3 text-sm mb-3">
-        <strong>Star team rules:</strong> the best-performing R1 loser advances
-        to Game 12 as the 8th QF team. Sorted by run differential, then lowest
-        total game score (5-4 ranks above 9-8), then head-to-head (see{' '}
-        <code>STAR_TIEBREAKERS</code> in <code>src/lib/star.ts</code> for the
-        configurable order).
+    <section className="space-y-6">
+      <div>
+        <h2 className="text-xl font-extrabold mb-3">
+          Round 1 Standings (Star contention)
+        </h2>
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-lg p-3 text-sm mb-3">
+          <strong>Star team rules:</strong> the best-performing R1 loser advances
+          to Game 12 as the 8th QF team. Sorted by run differential, then lowest
+          total game score (5-4 ranks above 9-8), then head-to-head (see{' '}
+          <code>STAR_TIEBREAKERS</code> in <code>src/lib/star.ts</code> for the
+          configurable order).
+        </div>
+
+        {losers === null ? <PendingNotice /> : <LoserTable losers={losers} />}
       </div>
 
-      {losers === null ? <PendingNotice /> : <LoserTable losers={losers} />}
+      <div>
+        <h2 className="text-xl font-extrabold mb-3">Final placings</h2>
+        <FinalPlacingsTable />
+      </div>
     </section>
   )
 }
@@ -94,4 +102,126 @@ function LoserTable({ losers }: { losers: ReturnType<typeof r1Losers> }) {
       </table>
     </div>
   )
+}
+
+/* ── Final placings ──────────────────────────────────────────────────
+   14 rows that fill in progressively as games complete. Tied positions
+   (3rd-4th from SFs, 5th-8th from QFs) are shown as "T-3rd" / "T-5th";
+   within a tie we sort alphabetically since there's no natural order.
+   The 9th-14th band uses the Star tiebreaker (R1 losers minus the
+   Star) — they have a meaningful order from R1 stats.
+   ─────────────────────────────────────────────────────────────────── */
+
+interface PlacingRow {
+  rank: string
+  team: TeamName | null
+  reached: string
+}
+
+function FinalPlacingsTable() {
+  const games = useTournamentStore((s) => s.games)
+  const getStar = () => computeStarTeam(TOURNAMENT, games)
+
+  const final = getWinner(TOURNAMENT, games, 15, getStar)
+  const runnerUp = getLoser(TOURNAMENT, games, 15, getStar)
+
+  const sfLosers = [13, 14]
+    .map((id) => getLoser(TOURNAMENT, games, id, getStar))
+    .sort(alphaCompare)
+
+  const qfLosers = [9, 10, 11, 12]
+    .map((id) => getLoser(TOURNAMENT, games, id, getStar))
+    .sort(alphaCompare)
+
+  const r1NonStar: (TeamName | null)[] = (() => {
+    const losers = r1Losers(TOURNAMENT, games)
+    if (!losers) return Array<TeamName | null>(6).fill(null)
+    return rankLosers(losers).slice(1).map((l) => l.team)
+  })()
+
+  const rows: PlacingRow[] = [
+    { rank: '1st', team: final, reached: 'Champion 🏆' },
+    { rank: '2nd', team: runnerUp, reached: 'Runner-up' },
+    ...sfLosers.map((team) => ({
+      rank: 'T-3rd',
+      team,
+      reached: 'Semi Finals',
+    })),
+    ...qfLosers.map((team) => ({
+      rank: 'T-5th',
+      team,
+      reached: 'Quarter Finals',
+    })),
+    ...r1NonStar.map((team, i) => ({
+      rank: ordinal(9 + i),
+      team,
+      reached: 'Round 1',
+    })),
+  ]
+
+  const totalGames = TOURNAMENT.games.length
+  const playedGames = TOURNAMENT.games.filter((g) => isComplete(games[g.id])).length
+  const tournamentDone = playedGames === totalGames
+
+  return (
+    <div className="overflow-hidden rounded-lg border bg-card">
+      {!tournamentDone && (
+        <div className="bg-secondary text-xs text-muted-foreground px-3 py-2">
+          Fills in as games complete · {playedGames} of {totalGames} done
+        </div>
+      )}
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-secondary text-[0.7rem] uppercase tracking-wider text-muted-foreground">
+            <th className="px-2 py-2 font-extrabold w-20">Place</th>
+            <th className="px-2 py-2 font-extrabold text-left">Team</th>
+            <th className="px-2 py-2 font-extrabold text-right pr-3">Reached</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr
+              key={i}
+              className={cn(
+                'border-t',
+                i === 0 && 'bg-gradient-to-r from-yellow-100 to-amber-100',
+              )}
+            >
+              <td className="px-2 py-2 font-extrabold text-center">{row.rank}</td>
+              <td className="px-2 py-2 font-bold">
+                {row.team ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Swatch team={row.team} />
+                    {row.team}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground italic font-normal">TBD</span>
+                )}
+              </td>
+              <td className="px-2 py-2 text-right pr-3 text-muted-foreground">
+                {row.reached}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function alphaCompare(a: TeamName | null, b: TeamName | null): number {
+  // Nulls last so unfilled slots float to the bottom of their tied
+  // band (tournament hasn't filled them in yet).
+  if (a === null && b === null) return 0
+  if (a === null) return 1
+  if (b === null) return -1
+  return a.localeCompare(b)
+}
+
+function ordinal(n: number): string {
+  const tens = n % 100
+  if (tens >= 11 && tens <= 13) return `${n}th`
+  const last = n % 10
+  const suffix = last === 1 ? 'st' : last === 2 ? 'nd' : last === 3 ? 'rd' : 'th'
+  return `${n}${suffix}`
 }
