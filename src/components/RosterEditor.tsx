@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Swatch } from '@/components/Swatch'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 // Sentinel for "no team" — Radix Select rejects empty string values.
 const TEAM_NONE = '__none__'
@@ -40,6 +41,7 @@ export function RosterEditor() {
 
   const [newName, setNewName] = useState('')
   const [newHeadEligible, setNewHeadEligible] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null)
 
   const handleAdd = () => {
     const name = newName.trim()
@@ -47,11 +49,6 @@ export function RosterEditor() {
     addRef(name, newHeadEligible)
     setNewName('')
     setNewHeadEligible(false)
-  }
-
-  const handleDelete = (id: string, name: string) => {
-    if (!window.confirm(`Remove ${name} from the roster?`)) return
-    deleteRef(id)
   }
 
   return (
@@ -132,7 +129,7 @@ export function RosterEditor() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-red-700 hover:bg-red-50"
-                      onClick={() => handleDelete(r.id, r.name)}
+                      onClick={() => setPendingDelete({ id: r.id, name: r.name })}
                       aria-label={`Remove ${r.name}`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -176,6 +173,19 @@ export function RosterEditor() {
           Add
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title={pendingDelete ? `Remove ${pendingDelete.name}?` : ''}
+        description="Existing assignments to this ref will be left orphaned (showing as 'Unknown ref') so you can fix them manually."
+        confirmLabel="Remove"
+        destructive
+        onConfirm={() => {
+          if (pendingDelete) deleteRef(pendingDelete.id)
+          setPendingDelete(null)
+        }}
+      />
     </div>
   )
 }

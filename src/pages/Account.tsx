@@ -1,8 +1,10 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/store/auth'
 import { useTournamentStore, exportTournamentState } from '@/store/tournament'
 import { Button } from '@/components/ui/button'
 import { AccountState } from '@/components/AccountState'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 export function Account() {
   const role = useAuthStore((s) => s.role)
@@ -29,6 +31,7 @@ function AdminTools() {
   const importState = useTournamentStore((s) => s.importState)
   const resetAll = useTournamentStore((s) => s.resetAll)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   const handleExport = () => {
     const data = exportTournamentState()
@@ -55,9 +58,11 @@ function AdminTools() {
         const incoming = obj.state ?? obj
         if (!incoming.games) throw new Error('Missing games key')
         importState({ games: incoming.games, gameRefs: incoming.gameRefs ?? {} })
-        alert('Imported.')
+        toast.success('Imported.')
       } catch (err) {
-        alert('Import failed: ' + (err instanceof Error ? err.message : String(err)))
+        toast.error(
+          'Import failed: ' + (err instanceof Error ? err.message : String(err)),
+        )
       } finally {
         if (fileRef.current) fileRef.current.value = ''
       }
@@ -65,10 +70,10 @@ function AdminTools() {
     reader.readAsText(f)
   }
 
-  const handleReset = () => {
-    if (!window.confirm('Reset all scores and ref assignments? This cannot be undone.')) return
-    resetAll()
-  }
+  // Reset confirmation runs through the shared ConfirmDialog so the
+  // UX matches the rest of the app (focus trap, dismiss-on-backdrop,
+  // proper destructive styling). The actual destructive call is
+  // wired from the dialog's onConfirm.
 
   return (
     <div className="bg-card border rounded-lg p-4">
@@ -91,10 +96,20 @@ function AdminTools() {
           hidden
           onChange={handleImportFile}
         />
-        <Button variant="destructive" onClick={handleReset}>
+        <Button variant="destructive" onClick={() => setResetConfirmOpen(true)}>
           Reset all
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={resetConfirmOpen}
+        onOpenChange={setResetConfirmOpen}
+        title="Reset all scores and assignments?"
+        description="The ref roster is preserved. Scores and assignments are wiped on every device. This cannot be undone."
+        confirmLabel="Reset"
+        destructive
+        onConfirm={resetAll}
+      />
     </div>
   )
 }

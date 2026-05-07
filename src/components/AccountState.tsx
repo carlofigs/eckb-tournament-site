@@ -4,6 +4,7 @@ import { useSyncStore } from '@/store/sync'
 import { useTournamentStore } from '@/store/tournament'
 import { Button } from '@/components/ui/button'
 import { SignInDialog } from '@/components/SignInDialog'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { cn } from '@/lib/utils'
 
 /**
@@ -16,6 +17,7 @@ export function AccountState() {
   const signOut = useAuthStore((s) => s.signOut)
   const refsMap = useTournamentStore((s) => s.refs)
   const [open, setOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const ref = refId ? refsMap[refId] : null
 
@@ -46,12 +48,7 @@ export function AccountState() {
           {role === 'player' ? (
             <Button onClick={() => setOpen(true)}>Sign in</Button>
           ) : (
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (window.confirm('Sign out?')) signOut()
-              }}
-            >
+            <Button variant="outline" onClick={() => setConfirmOpen(true)}>
               Sign out
             </Button>
           )}
@@ -59,6 +56,14 @@ export function AccountState() {
       </div>
       <SyncSummary />
       <SignInDialog open={open} onOpenChange={setOpen} />
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Sign out?"
+        description="You'll need your PIN to sign back in."
+        confirmLabel="Sign out"
+        onConfirm={signOut}
+      />
     </>
   )
 }

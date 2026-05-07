@@ -3,6 +3,7 @@ import { Lock, Unlock } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import { useTournamentStore } from '@/store/tournament'
 import { SignInDialog } from '@/components/SignInDialog'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { cn } from '@/lib/utils'
 
 /**
@@ -19,6 +20,7 @@ export function AuthLock() {
   const signOut = useAuthStore((s) => s.signOut)
   const refsMap = useTournamentStore((s) => s.refs)
   const [open, setOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const isSignedIn = role !== 'player'
   const ref = refId ? refsMap[refId] : null
@@ -26,11 +28,8 @@ export function AuthLock() {
     role === 'organiser' ? 'Organiser' : role === 'ref' ? ref?.name ?? 'Ref' : 'Sign in'
 
   const handleClick = () => {
-    if (isSignedIn) {
-      if (window.confirm('Sign out?')) signOut()
-      return
-    }
-    setOpen(true)
+    if (isSignedIn) setConfirmOpen(true)
+    else setOpen(true)
   }
 
   return (
@@ -54,6 +53,14 @@ export function AuthLock() {
         <span className="max-w-[80px] truncate">{label}</span>
       </button>
       <SignInDialog open={open} onOpenChange={setOpen} />
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Sign out?"
+        description="You'll need your PIN to sign back in."
+        confirmLabel="Sign out"
+        onConfirm={signOut}
+      />
     </>
   )
 }

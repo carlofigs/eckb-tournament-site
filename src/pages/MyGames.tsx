@@ -4,8 +4,9 @@ import { useTournamentStore } from '@/store/tournament'
 import { useAuthStore } from '@/store/auth'
 import { GameRow } from '@/components/GameRow'
 import { isComplete } from '@/lib/games'
+import { getRefRoleInGame } from '@/lib/refs'
 import { cn } from '@/lib/utils'
-import type { Game, GameRefAssignment, RefId } from '@/lib/schemas'
+import type { Game, RefId } from '@/lib/schemas'
 
 /**
  * Ref-only "My games" view. Shows only the games where the signed-in
@@ -30,7 +31,7 @@ export function MyGames() {
     if (!refId) return []
     const slotOrder = TOURNAMENT.timeSlots.map((s) => s.time)
     return TOURNAMENT.games
-      .filter((g) => isMyGame(gameRefs[g.id], refId))
+      .filter((g) => getRefRoleInGame(gameRefs[g.id], refId) !== null)
       .sort((a, b) => {
         const idx = slotOrder.indexOf(a.time) - slotOrder.indexOf(b.time)
         return idx !== 0 ? idx : a.id - b.id
@@ -76,7 +77,7 @@ export function MyGames() {
 function MyGameCard({ game, refId }: { game: Game; refId: RefId }) {
   const gameRefs = useTournamentStore((s) => s.gameRefs)
   const games = useTournamentStore((s) => s.games)
-  const myRole = roleInGame(gameRefs[game.id], refId)
+  const myRole = getRefRoleInGame(gameRefs[game.id], refId)
   const done = isComplete(games[game.id])
 
   return (
@@ -98,20 +99,4 @@ function MyGameCard({ game, refId }: { game: Game; refId: RefId }) {
       <GameRow game={game} />
     </div>
   )
-}
-
-function isMyGame(a: GameRefAssignment | undefined, refId: RefId): boolean {
-  if (!a) return false
-  if (a.head === refId) return true
-  return a.lines.some((s) => s && 'ref' in s && s.ref === refId)
-}
-
-function roleInGame(
-  a: GameRefAssignment | undefined,
-  refId: RefId,
-): string | null {
-  if (!a) return null
-  if (a.head === refId) return 'Head'
-  const idx = a.lines.findIndex((s) => s && 'ref' in s && s.ref === refId)
-  return idx >= 0 ? `Line ${idx + 1}` : null
 }

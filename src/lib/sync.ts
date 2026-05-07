@@ -17,7 +17,7 @@ import type { GameId, GameRefAssignment, GameScore, Ref, RefId } from '@/lib/sch
  * keeps running from localStorage only in that case.
  */
 
-export async function pushScore(gameId: GameId, score: GameScore): Promise<void> {
+async function pushScore(gameId: GameId, score: GameScore): Promise<void> {
   if (!supabase) return
   const { error } = await supabase
     .from('game_scores')

@@ -60,6 +60,7 @@ export function RefAssignmentRow({ game }: RefAssignmentRowProps) {
   // the field as players, so they can't ref. Same currently-selected
   // exception so an existing assignment doesn't disappear from view.
   const refsPlayingNow = refsBusyAsPlayers(TOURNAMENT, refsMap, games, game.id)
+  const takenForHead = refsTakenForSlot(TOURNAMENT, gameRefs, game.id, 'head')
 
   // Resolve team labels (for the row header).
   const getStar = () => computeStarTeam(TOURNAMENT, games)
@@ -79,31 +80,26 @@ export function RefAssignmentRow({ game }: RefAssignmentRowProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        {(() => {
-          const takenForHead = refsTakenForSlot(TOURNAMENT, gameRefs, game.id, 'head')
-          return (
-            <SlotPicker
-              label="Head"
-              value={encodeHead(assignment.head)}
-              empty={!assignment.head}
-              onChange={(v) => setHead(game.id, decodeHead(v))}
-            >
-              <SelectItem value={SENTINEL_NONE}>— Unassigned —</SelectItem>
-              <SelectGroup>
-                <SelectLabel>Head-eligible refs</SelectLabel>
-                {sortedRefs
-                  .filter((r) => r.headEligible)
-                  .filter((r) => !takenForHead.has(r.id) || r.id === assignment.head)
-                  .filter((r) => !refsPlayingNow.has(r.id) || r.id === assignment.head)
-                  .map((r) => (
-                    <SelectItem key={r.id} value={`ref:${r.id}`}>
-                      {r.name}
-                    </SelectItem>
-                  ))}
-              </SelectGroup>
-            </SlotPicker>
-          )
-        })()}
+        <SlotPicker
+          label="Head"
+          value={encodeHead(assignment.head)}
+          empty={!assignment.head}
+          onChange={(v) => setHead(game.id, decodeHead(v))}
+        >
+          <SelectItem value={SENTINEL_NONE}>— Unassigned —</SelectItem>
+          <SelectGroup>
+            <SelectLabel>Head-eligible refs</SelectLabel>
+            {sortedRefs
+              .filter((r) => r.headEligible)
+              .filter((r) => !takenForHead.has(r.id) || r.id === assignment.head)
+              .filter((r) => !refsPlayingNow.has(r.id) || r.id === assignment.head)
+              .map((r) => (
+                <SelectItem key={r.id} value={`ref:${r.id}`}>
+                  {r.name}
+                </SelectItem>
+              ))}
+          </SelectGroup>
+        </SlotPicker>
 
         {assignment.lines.map((slot, idx) => {
           const takenForLine = refsTakenForSlot(TOURNAMENT, gameRefs, game.id, { line: idx })

@@ -12,6 +12,24 @@ import { gameDef, resolveTeam } from '@/lib/games'
 import { computeStarTeam } from '@/lib/star'
 
 /**
+ * If `refId` is assigned to `assignment` (head or line), returns
+ * "Head" / "Line 1" / "Line 2" / etc. Returns null if the ref isn't
+ * involved in this game. Used by MyGames to label cards and by
+ * canEditScore (below) for permission checks.
+ */
+export function getRefRoleInGame(
+  assignment: GameRefAssignment | undefined,
+  refId: RefId,
+): string | null {
+  if (!assignment) return null
+  if (assignment.head === refId) return 'Head'
+  const idx = assignment.lines.findIndex(
+    (slot) => slot && 'ref' in slot && slot.ref === refId,
+  )
+  return idx >= 0 ? `Line ${idx + 1}` : null
+}
+
+/**
  * Role-aware editability check. Mirrors the legacy version:
  *   - organiser: every game
  *   - ref:       only games where they're the head ref or one of the
@@ -25,10 +43,7 @@ export function canEditScore(
 ): boolean {
   if (auth.role === 'organiser') return true
   if (auth.role === 'ref' && auth.refId) {
-    const r = gameRefs[gameId]
-    if (!r) return false
-    if (r.head === auth.refId) return true
-    return r.lines.some((slot) => slot && 'ref' in slot && slot.ref === auth.refId)
+    return getRefRoleInGame(gameRefs[gameId], auth.refId) !== null
   }
   return false
 }

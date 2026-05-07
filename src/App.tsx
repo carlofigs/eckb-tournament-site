@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AppShell } from '@/components/AppShell'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Home } from '@/pages/Home'
 import { Schedule } from '@/pages/Schedule'
 import { Bracket } from '@/pages/Bracket'
@@ -12,10 +13,10 @@ import { Account } from '@/pages/Account'
 import { useInitialSync } from '@/hooks/useInitialSync'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 
-// `basename` matches `vite.config.ts` -> `base`. Both are
-// "/eckb-tournament-site/" so links resolve identically in dev and on
-// GitHub Pages.
-const BASENAME = '/eckb-tournament-site'
+// `basename` is derived from Vite's `base` config (set in
+// vite.config.ts to "/eckb-tournament-site/"). Single source of
+// truth — change the project name there and routing follows.
+const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 export default function App() {
   // One-shot fetch on mount, then subscribe to realtime row-level
@@ -25,7 +26,7 @@ export default function App() {
   useRealtimeSync()
 
   return (
-    <>
+    <ErrorBoundary>
       <BrowserRouter basename={BASENAME}>
         <Routes>
           <Route element={<AppShell />}>
@@ -42,6 +43,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
       <Toaster richColors position="top-center" />
-    </>
+    </ErrorBoundary>
   )
 }
