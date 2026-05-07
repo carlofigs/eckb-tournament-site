@@ -19,20 +19,25 @@ export const summer2026: Tournament = {
   dateLabel: 'Sunday · 10 May 2026',
 
   teams: [
-    { name: 'Baby Blue', colour: '#89CFF0' },
-    { name: 'Pink',      colour: '#EC4899' },
-    { name: 'Lilac',     colour: '#C8A2C8' },
-    { name: 'Green',     colour: '#16A34A' },
-    { name: 'Red',       colour: '#B91C1C' },
-    { name: 'Hay',       colour: '#DAA520' },
-    { name: 'Black',     colour: '#1F2937' },
+    // Alphabetical so the Teams grid + every dropdown that pulls from
+    // `tournament.teams` (volunteer slots, roster editor's team
+    // picker) is scannable in one pass. Game definitions reference
+    // teams by name, not by index — reordering here is presentation
+    // only.
     { name: 'Apple',     colour: '#84CC16' },
-    { name: 'Yellow',    colour: '#FACC15' },
-    { name: 'Chocolate', colour: '#78350F' },
-    { name: 'Purple',    colour: '#9333EA' },
+    { name: 'Baby Blue', colour: '#89CFF0' },
+    { name: 'Black',     colour: '#1F2937' },
     { name: 'Blue',      colour: '#1E40AF' },
+    { name: 'Chocolate', colour: '#78350F' },
+    { name: 'Green',     colour: '#16A34A' },
+    { name: 'Hay',       colour: '#DAA520' },
+    { name: 'Lilac',     colour: '#C8A2C8' },
     { name: 'Orange',    colour: '#F97316' },
+    { name: 'Pink',      colour: '#EC4899' },
+    { name: 'Purple',    colour: '#9333EA' },
+    { name: 'Red',       colour: '#B91C1C' },
     { name: 'Teal',      colour: '#0D9488' },
+    { name: 'Yellow',    colour: '#FACC15' },
   ],
 
   rounds: {
