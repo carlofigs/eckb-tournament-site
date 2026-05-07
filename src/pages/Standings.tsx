@@ -105,17 +105,19 @@ function LoserTable({ losers }: { losers: ReturnType<typeof r1Losers> }) {
 }
 
 /* ── Final placings ──────────────────────────────────────────────────
-   14 rows that fill in progressively as games complete. Tied positions
-   (3rd-4th from SFs, 5th-8th from QFs) are shown as "T-3rd" / "T-5th";
-   within a tie we sort alphabetically since there's no natural order.
-   The 9th-14th band uses the Star tiebreaker (R1 losers minus the
-   Star) — they have a meaningful order from R1 stats.
+   14 rows that fill in progressively as games complete. Five bands:
+     1st              (Final winner)
+     2nd              (Final loser)
+     3rd × 2          (SF losers)
+     QF × 4           (QF losers)
+     R1 × 6           (R1 non-Star losers)
+   No individual ranking past 3rd — community-first league, not a
+   leaderboard. Within each band, teams sort alphabetically.
    ─────────────────────────────────────────────────────────────────── */
 
 interface PlacingRow {
   rank: string
   team: TeamName | null
-  reached: string
 }
 
 function FinalPlacingsTable() {
@@ -133,30 +135,25 @@ function FinalPlacingsTable() {
     .map((id) => getLoser(TOURNAMENT, games, id, getStar))
     .sort(alphaCompare)
 
+  // R1 non-Star losers — we still call rankLosers to identify which
+  // one was the Star (and therefore advanced), then list the rest
+  // alphabetically. Star tiebreaker no longer drives ranking here.
   const r1NonStar: (TeamName | null)[] = (() => {
     const losers = r1Losers(TOURNAMENT, games)
     if (!losers) return Array<TeamName | null>(6).fill(null)
-    return rankLosers(losers).slice(1).map((l) => l.team)
+    const star = rankLosers(losers)[0]?.team
+    return losers
+      .map((l) => l.team)
+      .filter((team) => team !== star)
+      .sort(alphaCompare)
   })()
 
   const rows: PlacingRow[] = [
-    { rank: '1st', team: final, reached: 'Champion 🏆' },
-    { rank: '2nd', team: runnerUp, reached: 'Runner-up' },
-    ...sfLosers.map((team) => ({
-      rank: 'T-3rd',
-      team,
-      reached: 'Semi Finals',
-    })),
-    ...qfLosers.map((team) => ({
-      rank: 'T-5th',
-      team,
-      reached: 'Quarter Finals',
-    })),
-    ...r1NonStar.map((team, i) => ({
-      rank: ordinal(9 + i),
-      team,
-      reached: 'Round 1',
-    })),
+    { rank: '1st', team: final },
+    { rank: '2nd', team: runnerUp },
+    ...sfLosers.map((team) => ({ rank: '3rd', team })),
+    ...qfLosers.map((team) => ({ rank: 'QF', team })),
+    ...r1NonStar.map((team) => ({ rank: 'R1', team })),
   ]
 
   const totalGames = TOURNAMENT.games.length
@@ -175,7 +172,6 @@ function FinalPlacingsTable() {
           <tr className="bg-secondary text-[0.7rem] uppercase tracking-wider text-muted-foreground">
             <th className="px-2 py-2 font-extrabold w-20">Place</th>
             <th className="px-2 py-2 font-extrabold text-left">Team</th>
-            <th className="px-2 py-2 font-extrabold text-right pr-3">Reached</th>
           </tr>
         </thead>
         <tbody>
@@ -187,7 +183,10 @@ function FinalPlacingsTable() {
                 i === 0 && 'bg-gradient-to-r from-yellow-100 to-amber-100',
               )}
             >
-              <td className="px-2 py-2 font-extrabold text-center">{row.rank}</td>
+              <td className="px-2 py-2 font-extrabold text-center">
+                {i === 0 && <span aria-hidden>🏆 </span>}
+                {row.rank}
+              </td>
               <td className="px-2 py-2 font-bold">
                 {row.team ? (
                   <span className="inline-flex items-center gap-2">
@@ -197,9 +196,6 @@ function FinalPlacingsTable() {
                 ) : (
                   <span className="text-muted-foreground italic font-normal">TBD</span>
                 )}
-              </td>
-              <td className="px-2 py-2 text-right pr-3 text-muted-foreground">
-                {row.reached}
               </td>
             </tr>
           ))}
@@ -216,12 +212,4 @@ function alphaCompare(a: TeamName | null, b: TeamName | null): number {
   if (a === null) return 1
   if (b === null) return -1
   return a.localeCompare(b)
-}
-
-function ordinal(n: number): string {
-  const tens = n % 100
-  if (tens >= 11 && tens <= 13) return `${n}th`
-  const last = n % 10
-  const suffix = last === 1 ? 'st' : last === 2 ? 'nd' : last === 3 ? 'rd' : 'th'
-  return `${n}${suffix}`
 }
