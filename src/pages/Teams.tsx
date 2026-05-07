@@ -1,25 +1,24 @@
 import { TOURNAMENT } from '@/lib/tournament'
+import { TeamShield } from '@/components/TeamShield'
 
 /**
- * Phase 1 placeholder — wires up the team grid as a sanity check
- * that config + Tailwind theming both work end-to-end.
+ * The 14 teams as a grid of shield cards. Shields live at
+ * /public/shields/<slug>.png; the slug is the lowercase team name
+ * with spaces → hyphens. Missing files gracefully fall back to a
+ * large coloured swatch, so a partial-import doesn't break the page.
  */
 export function Teams() {
   return (
     <div>
       <h2 className="text-xl font-extrabold mb-3">Teams</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {TOURNAMENT.teams.map((t) => (
           <div
             key={t.name}
-            className="flex items-center gap-2 px-3 py-2 bg-card border rounded-lg font-bold"
+            className="flex flex-col items-center gap-2 p-3 bg-card border rounded-xl"
           >
-            <span
-              aria-hidden
-              className="w-7 h-7 rounded-md border border-black/15"
-              style={{ backgroundColor: t.colour }}
-            />
-            <span>{t.name}</span>
+            <TeamShield team={t.name} className="w-24 h-24" />
+            <span className="text-sm font-extrabold text-center">{t.name}</span>
           </div>
         ))}
       </div>
