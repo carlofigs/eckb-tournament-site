@@ -2,7 +2,14 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { TOURNAMENT } from '@/lib/tournament'
 import { useSyncStore } from '@/store/sync'
-import type { GameId, GameRefAssignment, GameScore, Ref, RefId } from '@/lib/schemas'
+import type {
+  Announcement,
+  GameId,
+  GameRefAssignment,
+  GameScore,
+  Ref,
+  RefId,
+} from '@/lib/schemas'
 
 /**
  * Write helpers — fire-and-forget upserts/deletes against Supabase.
@@ -110,6 +117,28 @@ export async function pushRef(ref: Ref): Promise<void> {
   useSyncStore.getState().markSync()
 }
 
+export async function pushAnnouncement(announcement: Announcement): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase
+    .from('announcements')
+    .upsert(
+      {
+        tournament_id: TOURNAMENT.id,
+        message: announcement.message,
+        visible: announcement.visible,
+      },
+      { onConflict: 'tournament_id' },
+    )
+  if (error) {
+    syncErrorToast(
+      'Failed to update announcement: ' + error.message,
+      'pushAnnouncement',
+    )
+    return
+  }
+  useSyncStore.getState().markSync()
+}
+
 export async function pushDeleteRef(refId: RefId): Promise<void> {
   if (!supabase) return
   const { error } = await supabase
@@ -181,4 +210,20 @@ export function cancelPushRefDebounced(refId: RefId): void {
     clearTimeout(t)
     refTimers.delete(refId)
   }
+}
+
+/**
+ * Announcement push is debounced too — typing into the textarea
+ * shouldn't fire one upsert per keystroke. Only one announcement per
+ * tournament so a single global timer is enough.
+ */
+let announcementTimer: ReturnType<typeof setTimeout> | undefined
+const ANNOUNCEMENT_DEBOUNCE_MS = 500
+
+export function pushAnnouncementDebounced(announcement: Announcement): void {
+  if (announcementTimer) clearTimeout(announcementTimer)
+  announcementTimer = setTimeout(() => {
+    announcementTimer = undefined
+    void pushAnnouncement(announcement)
+  }, ANNOUNCEMENT_DEBOUNCE_MS)
 }

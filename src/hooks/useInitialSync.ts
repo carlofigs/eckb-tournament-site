@@ -5,6 +5,7 @@ import { useTournamentStore } from '@/store/tournament'
 import { useSyncStore } from '@/store/sync'
 import { pushRef } from '@/lib/sync'
 import type {
+  Announcement,
   GameId,
   GameRefAssignment,
   GameScore,
@@ -39,20 +40,26 @@ export function useInitialSync() {
 
   const fetchAll = useCallback(async () => {
     if (!supabase) return
-    const [scoresResult, gameRefsResult, rosterResult] = await Promise.all([
-      supabase
-        .from('game_scores')
-        .select('game_id, score_a, score_b')
-        .eq('tournament_id', TOURNAMENT.id),
-      supabase
-        .from('game_refs')
-        .select('game_id, head, lines')
-        .eq('tournament_id', TOURNAMENT.id),
-      supabase
-        .from('refs')
-        .select('ref_id, name, head_eligible, team')
-        .eq('tournament_id', TOURNAMENT.id),
-    ])
+    const [scoresResult, gameRefsResult, rosterResult, announcementResult] =
+      await Promise.all([
+        supabase
+          .from('game_scores')
+          .select('game_id, score_a, score_b')
+          .eq('tournament_id', TOURNAMENT.id),
+        supabase
+          .from('game_refs')
+          .select('game_id, head, lines')
+          .eq('tournament_id', TOURNAMENT.id),
+        supabase
+          .from('refs')
+          .select('ref_id, name, head_eligible, team')
+          .eq('tournament_id', TOURNAMENT.id),
+        supabase
+          .from('announcements')
+          .select('message, visible')
+          .eq('tournament_id', TOURNAMENT.id)
+          .maybeSingle(),
+      ])
 
     // Handle each result independently so a missing optional table
     // (e.g. `refs` before its migration is applied) doesn't break the
@@ -66,6 +73,12 @@ export function useInitialSync() {
     if (rosterResult.error) {
       console.warn('Supabase refs fetch failed:', rosterResult.error.message)
     }
+    if (announcementResult.error) {
+      console.warn(
+        'Supabase announcement fetch failed:',
+        announcementResult.error.message,
+      )
+    }
 
     // Build a partial state of just the slices that came back ok.
     // Slices that errored stay undefined → importState leaves the
@@ -74,6 +87,7 @@ export function useInitialSync() {
       games: Record<GameId, GameScore>
       gameRefs: Record<GameId, GameRefAssignment>
       refs: Record<RefId, Ref>
+      announcement: Announcement
     }> = {}
 
     if (!scoresResult.error) {
@@ -118,6 +132,17 @@ export function useInitialSync() {
         }
       }
       partial.refs = out
+    }
+
+    if (!announcementResult.error) {
+      // Row may not exist yet — `maybeSingle()` returns null data
+      // without erroring. Default to a hidden empty banner.
+      partial.announcement = announcementResult.data
+        ? {
+            message: announcementResult.data.message ?? '',
+            visible: !!announcementResult.data.visible,
+          }
+        : { message: '', visible: false }
     }
 
     // Only mark synced if at least one slice came back. Otherwise the

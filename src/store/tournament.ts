@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import type {
+  Announcement,
   GameId,
   GameRefAssignment,
   GameScore,
@@ -13,6 +14,8 @@ import type {
 import { TOURNAMENT } from '@/lib/tournament'
 import {
   cancelPushRefDebounced,
+  pushAnnouncement,
+  pushAnnouncementDebounced,
   pushDeleteRef,
   pushRef,
   pushRefDebounced,
@@ -65,10 +68,19 @@ function initialGameRefs(): Record<GameId, GameRefAssignment> {
   return gameRefs
 }
 
+function emptyAnnouncement(): Announcement {
+  return { message: '', visible: false }
+}
+
 function initialState(): TournamentState {
   // refs starts empty — `useInitialSync` seeds from CONFIG.refs on
   // first run if the DB is empty, otherwise loads from the DB.
-  return { games: initialGames(), gameRefs: initialGameRefs(), refs: {} }
+  return {
+    games: initialGames(),
+    gameRefs: initialGameRefs(),
+    refs: {},
+    announcement: emptyAnnouncement(),
+  }
 }
 
 interface TournamentStore extends TournamentState {
@@ -89,6 +101,9 @@ interface TournamentStore extends TournamentState {
   addRef: (name: string, headEligible: boolean) => Ref
   updateRef: (id: RefId, patch: Partial<Omit<Ref, 'id'>>) => void
   deleteRef: (id: RefId) => void
+  /** Patch the announcement (message and/or visibility). Pushes to
+   *  Supabase, debounced for text input. */
+  setAnnouncement: (patch: Partial<Announcement>) => void
   /**
    * Realtime-only writers — applied when Supabase pushes a change
    * from another device. They MUST NOT push back, otherwise we'd
@@ -98,6 +113,7 @@ interface TournamentStore extends TournamentState {
   applyRemoteRefs: (id: GameId, refs: GameRefAssignment) => void
   applyRemoteRef: (ref: Ref) => void
   applyRemoteDeleteRef: (id: RefId) => void
+  applyRemoteAnnouncement: (announcement: Announcement) => void
 }
 
 export const useTournamentStore = create<TournamentStore>()(
@@ -182,6 +198,21 @@ export const useTournamentStore = create<TournamentStore>()(
         void pushDeleteRef(id)
       },
 
+      setAnnouncement: (patch) => {
+        set((s) => {
+          s.announcement = { ...s.announcement, ...patch }
+        })
+        const next = useTournamentStore.getState().announcement
+        // Toggle visible → push immediately so it lands on other
+        // phones without the typing-style debounce delay; message
+        // changes go through the debounced path.
+        if ('visible' in patch && !('message' in patch)) {
+          void pushAnnouncement(next)
+        } else {
+          pushAnnouncementDebounced(next)
+        }
+      },
+
       applyRemoteScore: (id, score) =>
         set((s) => {
           s.games[id] = score
@@ -200,6 +231,11 @@ export const useTournamentStore = create<TournamentStore>()(
       applyRemoteDeleteRef: (id) =>
         set((s) => {
           delete s.refs[id]
+        }),
+
+      applyRemoteAnnouncement: (announcement) =>
+        set((s) => {
+          s.announcement = announcement
         }),
 
       importState: (incoming) =>
@@ -233,6 +269,7 @@ export const useTournamentStore = create<TournamentStore>()(
           }
           // Refs are free-form (no tournament-specific shape).
           if (incoming.refs) s.refs = { ...incoming.refs }
+          if (incoming.announcement) s.announcement = { ...incoming.announcement }
         }),
     })),
     {

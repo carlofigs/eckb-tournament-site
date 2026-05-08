@@ -132,6 +132,17 @@ export interface TournamentState {
    * after that. Edits flow through the Refs page roster editor.
    */
   refs: Record<RefId, Ref>
+  /**
+   * Tournament-day announcement banner. Visibility is independent of
+   * the message body so organisers can pre-write and then toggle on
+   * at the right moment.
+   */
+  announcement: Announcement
+}
+
+export interface Announcement {
+  message: string
+  visible: boolean
 }
 
 /* ── Auth ──────────────────────────────────────────────────────────── */

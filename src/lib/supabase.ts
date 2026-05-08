@@ -46,3 +46,10 @@ export interface DbRef {
   team: string | null
   updated_at: string
 }
+
+export interface DbAnnouncement {
+  tournament_id: string
+  message: string
+  visible: boolean
+  updated_at: string
+}

@@ -67,6 +67,20 @@ export function MyGames() {
           : `${myGames.length} game${myGames.length === 1 ? '' : 's'} assigned · ${totalDone} done · ${upcoming} to go`}
       </p>
 
+      <div className="bg-secondary/50 border rounded-lg px-3 py-2 mb-3 text-sm">
+        New here?{' '}
+        <a
+          href="https://github.com/carlofigs/kickball-tournament-site/blob/main/docs/REFS.md"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="text-primary font-semibold underline"
+        >
+          Read the 5-minute refs guide
+        </a>
+        {' '}— covers sign-in, score entry, L1–L7 conventions, the Star
+        team / Kirk substitution, and what each tab is for.
+      </div>
+
       <div className="space-y-2">
         {myGames.map((g) => (
           <MyGameCard key={g.id} game={g} refId={refId} />

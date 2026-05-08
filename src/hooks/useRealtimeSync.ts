@@ -1,6 +1,11 @@
 import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { DbGameRefs, DbGameScore, DbRef } from '@/lib/supabase'
+import type {
+  DbAnnouncement,
+  DbGameRefs,
+  DbGameScore,
+  DbRef,
+} from '@/lib/supabase'
 import { TOURNAMENT } from '@/lib/tournament'
 import { useTournamentStore } from '@/store/tournament'
 import { useSyncStore } from '@/store/sync'
@@ -22,6 +27,9 @@ export function useRealtimeSync() {
   const applyRemoteRefs = useTournamentStore((s) => s.applyRemoteRefs)
   const applyRemoteRef = useTournamentStore((s) => s.applyRemoteRef)
   const applyRemoteDeleteRef = useTournamentStore((s) => s.applyRemoteDeleteRef)
+  const applyRemoteAnnouncement = useTournamentStore(
+    (s) => s.applyRemoteAnnouncement,
+  )
   const setStatus = useSyncStore((s) => s.setStatus)
   const markSync = useSyncStore((s) => s.markSync)
 
@@ -117,6 +125,28 @@ export function useRealtimeSync() {
           markSync()
         },
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'announcements',
+          filter: `tournament_id=eq.${TOURNAMENT.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            applyRemoteAnnouncement({ message: '', visible: false })
+            markSync()
+            return
+          }
+          const row = payload.new as DbAnnouncement
+          applyRemoteAnnouncement({
+            message: row.message ?? '',
+            visible: !!row.visible,
+          })
+          markSync()
+        },
+      )
       .subscribe((status) => {
         // Map Supabase channel states to our sync indicator. The
         // channel reconnects automatically; we just surface what's
@@ -145,6 +175,7 @@ export function useRealtimeSync() {
     applyRemoteRefs,
     applyRemoteRef,
     applyRemoteDeleteRef,
+    applyRemoteAnnouncement,
     setStatus,
     markSync,
   ])
