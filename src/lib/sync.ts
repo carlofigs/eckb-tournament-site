@@ -60,18 +60,30 @@ export async function pushRefs(
   useSyncStore.getState().markSync()
 }
 
-export async function pushReset(): Promise<void> {
+export async function pushResetScores(): Promise<void> {
   if (!supabase) return
-  // Reset clears scores + assignments only — the roster (refs table)
-  // is preserved deliberately so an organiser doesn't lose their
-  // ref list when they zero out the games.
-  const [scores, refs] = await Promise.all([
-    supabase.from('game_scores').delete().eq('tournament_id', TOURNAMENT.id),
-    supabase.from('game_refs').delete().eq('tournament_id', TOURNAMENT.id),
-  ])
-  const err = scores.error?.message ?? refs.error?.message
-  if (err) {
-    syncErrorToast('Failed to sync reset: ' + err, 'pushReset')
+  const { error } = await supabase
+    .from('game_scores')
+    .delete()
+    .eq('tournament_id', TOURNAMENT.id)
+  if (error) {
+    syncErrorToast('Failed to reset scores: ' + error.message, 'pushResetScores')
+    return
+  }
+  useSyncStore.getState().markSync()
+}
+
+export async function pushResetAssignments(): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase
+    .from('game_refs')
+    .delete()
+    .eq('tournament_id', TOURNAMENT.id)
+  if (error) {
+    syncErrorToast(
+      'Failed to reset ref assignments: ' + error.message,
+      'pushResetAssignments',
+    )
     return
   }
   useSyncStore.getState().markSync()

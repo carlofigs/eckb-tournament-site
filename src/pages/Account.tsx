@@ -29,9 +29,11 @@ export function Account() {
  */
 function AdminTools() {
   const importState = useTournamentStore((s) => s.importState)
-  const resetAll = useTournamentStore((s) => s.resetAll)
+  const resetScores = useTournamentStore((s) => s.resetScores)
+  const resetAssignments = useTournamentStore((s) => s.resetAssignments)
   const fileRef = useRef<HTMLInputElement>(null)
-  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
+  const [resetScoresOpen, setResetScoresOpen] = useState(false)
+  const [resetAssignmentsOpen, setResetAssignmentsOpen] = useState(false)
 
   const handleExport = () => {
     const data = exportTournamentState()
@@ -96,19 +98,31 @@ function AdminTools() {
           hidden
           onChange={handleImportFile}
         />
-        <Button variant="destructive" onClick={() => setResetConfirmOpen(true)}>
-          Reset all
+        <Button variant="destructive" onClick={() => setResetScoresOpen(true)}>
+          Reset scores
+        </Button>
+        <Button variant="destructive" onClick={() => setResetAssignmentsOpen(true)}>
+          Reset ref assignments
         </Button>
       </div>
 
       <ConfirmDialog
-        open={resetConfirmOpen}
-        onOpenChange={setResetConfirmOpen}
-        title="Reset all scores and assignments?"
-        description="The ref roster is preserved. Scores and assignments are wiped on every device. This cannot be undone."
-        confirmLabel="Reset"
+        open={resetScoresOpen}
+        onOpenChange={setResetScoresOpen}
+        title="Reset all scores?"
+        description="Scores are wiped on every device. Ref assignments and the roster are preserved. This cannot be undone."
+        confirmLabel="Reset scores"
         destructive
-        onConfirm={resetAll}
+        onConfirm={resetScores}
+      />
+      <ConfirmDialog
+        open={resetAssignmentsOpen}
+        onOpenChange={setResetAssignmentsOpen}
+        title="Reset all ref assignments?"
+        description="Head and line assignments for every game are cleared on every device. Scores and the roster are preserved. This cannot be undone."
+        confirmLabel="Reset assignments"
+        destructive
+        onConfirm={resetAssignments}
       />
     </div>
   )

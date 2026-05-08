@@ -17,7 +17,8 @@ import {
   pushRef,
   pushRefDebounced,
   pushRefs,
-  pushReset,
+  pushResetAssignments,
+  pushResetScores,
   pushScoreDebounced,
 } from '@/lib/sync'
 
@@ -75,7 +76,10 @@ interface TournamentStore extends TournamentState {
   setScore: (id: GameId, side: 'A' | 'B', value: number | null) => void
   setHead: (id: GameId, refId: RefId | null) => void
   setLine: (id: GameId, idx: number, slot: LineSlot) => void
-  resetAll: () => void
+  /** Wipes scores only (every game back to null/null). */
+  resetScores: () => void
+  /** Wipes ref assignments only (every game back to head=null + empty line slots). */
+  resetAssignments: () => void
   /**
    * Accepts a partial state — old export files predate the refs
    * roster, and the initial-sync hook also imports without touching
@@ -127,12 +131,18 @@ export const useTournamentStore = create<TournamentStore>()(
         void pushRefs(id, useTournamentStore.getState().gameRefs[id])
       },
 
-      resetAll: () => {
-        // Preserve the roster on reset — we only clear scores +
-        // assignments, not the people refereeing.
-        const refs = useTournamentStore.getState().refs
-        set(() => ({ ...initialState(), refs }))
-        void pushReset()
+      resetScores: () => {
+        set((s) => {
+          s.games = initialGames()
+        })
+        void pushResetScores()
+      },
+
+      resetAssignments: () => {
+        set((s) => {
+          s.gameRefs = initialGameRefs()
+        })
+        void pushResetAssignments()
       },
 
       addRef: (name, headEligible) => {
