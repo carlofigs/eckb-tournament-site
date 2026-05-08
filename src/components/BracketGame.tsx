@@ -17,7 +17,6 @@ interface BracketGameProps {
  */
 export function BracketGame({ game }: BracketGameProps) {
   const games = useTournamentStore((s) => s.games)
-  const gameRefs = useTournamentStore((s) => s.gameRefs)
 
   const getStar = () => computeStarTeam(TOURNAMENT, games)
   const teamA = resolveTeam(TOURNAMENT, games, game.teamA, getStar)
@@ -54,7 +53,7 @@ export function BracketGame({ game }: BracketGameProps) {
         decided={decided}
         isWinner={winner === teamB}
       />
-      <RefBadges assignment={gameRefs[game.id]} compact />
+      <RefBadges gameId={game.id} compact />
     </div>
   )
 }

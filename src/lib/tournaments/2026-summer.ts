@@ -66,10 +66,14 @@ export const summer2026: Tournament = {
     { id: 6,  round: 'R1', time: '1:45 pm',  field: 'Middle Field', teamA: 'Purple',    teamB: 'Blue' },
     { id: 7,  round: 'R1', time: '1:45 pm',  field: 'Kiosk Field',  teamA: 'Orange',    teamB: 'Teal' },
     // Game 8 intentionally omitted — see header comment.
-    { id: 9,  round: 'QF', time: '2:30 pm',  field: 'Road Field',   teamA: { winnerOf: 1 },  teamB: { winnerOf: 2 } },
-    { id: 10, round: 'QF', time: '2:30 pm',  field: 'Middle Field', teamA: { winnerOf: 3 },  teamB: { winnerOf: 4 } },
-    { id: 11, round: 'QF', time: '2:30 pm',  field: 'Kiosk Field',  teamA: { winnerOf: 5 },  teamB: { winnerOf: 6 }, packUp: 'Loser packs up Kiosk Field' },
-    { id: 12, round: 'QF', time: '2:30 pm',  field: 'Water Field',  teamA: { winnerOf: 7 },  teamB: { star: true },  packUp: 'Loser packs up Water Field' },
+    // QF line-ref defaults: L1-L7 conventionally fill the line slots
+    // (loser of R1 game k = "Lk"). Stored as `{ loserOf: G }` slots so
+    // they auto-resolve as scores land. Game 12's line 1 has no
+    // default — it's manually assigned.
+    { id: 9,  round: 'QF', time: '2:30 pm',  field: 'Road Field',   teamA: { winnerOf: 1 },  teamB: { winnerOf: 2 }, defaultLines: [{ loserOf: 1 }, { loserOf: 2 }] },
+    { id: 10, round: 'QF', time: '2:30 pm',  field: 'Middle Field', teamA: { winnerOf: 3 },  teamB: { winnerOf: 4 }, defaultLines: [{ loserOf: 3 }, { loserOf: 4 }] },
+    { id: 11, round: 'QF', time: '2:30 pm',  field: 'Kiosk Field',  teamA: { winnerOf: 5 },  teamB: { winnerOf: 6 }, packUp: 'Loser packs up Kiosk Field', defaultLines: [{ loserOf: 5 }, { loserOf: 6 }] },
+    { id: 12, round: 'QF', time: '2:30 pm',  field: 'Water Field',  teamA: { winnerOf: 7 },  teamB: { star: true },  packUp: 'Loser packs up Water Field',  defaultLines: [null, { loserOf: 7 }] },
     { id: 13, round: 'SF', time: '3:15 pm',  field: 'Road Field',   teamA: { winnerOf: 10 }, teamB: { winnerOf: 9 } },
     { id: 14, round: 'SF', time: '3:15 pm',  field: 'Middle Field', teamA: { winnerOf: 11 }, teamB: { winnerOf: 12 }, packUp: 'Loser packs up Middle Field' },
     { id: 15, round: 'F',  time: '4:00 pm',  field: 'Road Field',   teamA: { winnerOf: 13 }, teamB: { winnerOf: 14 }, packUp: 'Loser packs up Road Field' },
@@ -100,6 +104,10 @@ export const summer2026: Tournament = {
     { id: 'r14', name: 'Steven Intervention', headEligible: true  },
     { id: 'r15', name: 'Tom Elphick',         headEligible: false },
     { id: 'r16', name: 'Zack Krause',         headEligible: true  },
+    // Reserve ref used when a QF line-slot's `loserOf` resolves to
+    // the Star team (who's busy playing Game 12). See
+    // `starSubstituteRefId` below.
+    { id: 'r17', name: 'Kirk Davies',         headEligible: false },
   ],
 
   linesPerGame: 2,
@@ -111,4 +119,9 @@ export const summer2026: Tournament = {
     ref: '0000',
     organiser: '1111',
   },
+
+  // When a QF line-slot's `{ loserOf: G }` resolves to the Star team,
+  // substitute Kirk Davies — the Star is busy playing Game 12 across
+  // the same slot, so they can't volunteer-ref.
+  starSubstituteRefId: 'r17',
 }

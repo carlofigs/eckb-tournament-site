@@ -85,7 +85,7 @@ export function GameRow({ game }: GameRowProps) {
         </div>
       )}
 
-      <RefBadges assignment={gameRefs[game.id]} />
+      <RefBadges gameId={game.id} />
     </div>
   )
 }

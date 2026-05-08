@@ -31,12 +31,14 @@ export function MyGames() {
     if (!refId) return []
     const slotOrder = TOURNAMENT.timeSlots.map((s) => s.time)
     return TOURNAMENT.games
-      .filter((g) => getRefRoleInGame(gameRefs[g.id], refId) !== null)
+      .filter(
+        (g) => getRefRoleInGame(TOURNAMENT, games, gameRefs, g.id, refId) !== null,
+      )
       .sort((a, b) => {
         const idx = slotOrder.indexOf(a.time) - slotOrder.indexOf(b.time)
         return idx !== 0 ? idx : a.id - b.id
       })
-  }, [refId, gameRefs])
+  }, [refId, gameRefs, games])
 
   if (role !== 'ref' || !refId) {
     return (
@@ -77,7 +79,7 @@ export function MyGames() {
 function MyGameCard({ game, refId }: { game: Game; refId: RefId }) {
   const gameRefs = useTournamentStore((s) => s.gameRefs)
   const games = useTournamentStore((s) => s.games)
-  const myRole = getRefRoleInGame(gameRefs[game.id], refId)
+  const myRole = getRefRoleInGame(TOURNAMENT, games, gameRefs, game.id, refId)
   const done = isComplete(games[game.id])
 
   return (

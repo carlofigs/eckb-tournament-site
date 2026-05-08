@@ -1,10 +1,12 @@
-import type { GameRefAssignment } from '@/lib/schemas'
+import type { GameId } from '@/lib/schemas'
+import { TOURNAMENT } from '@/lib/tournament'
 import { useTournamentStore } from '@/store/tournament'
+import { effectiveLines, resolveLineSlot } from '@/lib/refs'
 import { Swatch } from '@/components/Swatch'
 import { cn } from '@/lib/utils'
 
 interface RefBadgesProps {
-  assignment: GameRefAssignment | undefined
+  gameId: GameId
   /**
    * When `compact`, badges shrink — used inside bracket cards where
    * vertical space is tight.
@@ -14,22 +16,29 @@ interface RefBadgesProps {
 
 /**
  * Inline summary of the refs assigned to a game. Read-only — used on
- * Schedule, Up Next, and Bracket. The Refs management page renders
- * editable cells separately.
+ * Schedule, Up Next, and Bracket. Resolves effective line slots:
+ * stored DB value, or the config default when stored is null. The
+ * `{ loserOf: G }` default resolves to the team that lost game G,
+ * with the Star team substituted by `tournament.starSubstituteRefId`.
  */
-export function RefBadges({ assignment, compact }: RefBadgesProps) {
+export function RefBadges({ gameId, compact }: RefBadgesProps) {
   const refs = useTournamentStore((s) => s.refs)
-  if (!assignment) return null
-  const head = assignment.head ? refs[assignment.head] : null
-  // Track if the assignment references a refId that's been deleted —
-  // we still surface it (with a warning style) so an organiser can
-  // see which game is mis-wired.
-  const headOrphan = assignment.head && !head
-  const lineNodes = assignment.lines
+  const games = useTournamentStore((s) => s.games)
+  const gameRefs = useTournamentStore((s) => s.gameRefs)
+  const assignment = gameRefs[gameId]
+
+  const head = assignment?.head ? refs[assignment.head] : null
+  // Stored head ref id that's no longer in the roster — surface it
+  // so the mis-wiring is visible to whoever's reviewing.
+  const headOrphan = assignment?.head && !head
+
+  const lines = effectiveLines(TOURNAMENT, gameRefs, gameId)
+  const lineNodes = lines
     .map((slot, i) => {
-      if (!slot) return null
-      if ('ref' in slot) {
-        const r = refs[slot.ref]
+      const resolved = resolveLineSlot(TOURNAMENT, games, slot)
+      if (!resolved) return null
+      if ('ref' in resolved) {
+        const r = refs[resolved.ref]
         if (!r) {
           return (
             <Badge key={i} variant="missing" compact={compact}>
@@ -46,8 +55,8 @@ export function RefBadges({ assignment, compact }: RefBadgesProps) {
       // Volunteer team — show coloured swatch + team name
       return (
         <Badge key={i} variant="volunteer" compact={compact}>
-          <Swatch team={slot.team} size="sm" />
-          <span>{slot.team}</span>
+          <Swatch team={resolved.team} size="sm" />
+          <span>{resolved.team}</span>
         </Badge>
       )
     })

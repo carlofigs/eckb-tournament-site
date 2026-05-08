@@ -1,10 +1,15 @@
+import { useMemo } from 'react'
 import type { Game, GameRefAssignment, LineSlot, RefId, TeamName } from '@/lib/schemas'
 import { TOURNAMENT } from '@/lib/tournament'
 import { useTournamentStore } from '@/store/tournament'
-import { refsBusyAsPlayers, refsTakenForSlot, teamsPlayingAtSlot } from '@/lib/refs'
+import {
+  refsBusyAsPlayers,
+  refsTakenForSlot,
+  resolveLineSlot,
+  teamsPlayingAtSlot,
+} from '@/lib/refs'
 import { resolveTeam, teamLabel } from '@/lib/games'
 import { computeStarTeam } from '@/lib/star'
-import { useMemo } from 'react'
 import {
   Select,
   SelectContent,
@@ -19,24 +24,13 @@ import { Swatch } from '@/components/Swatch'
 import { cn } from '@/lib/utils'
 
 /* Radix Select rejects empty-string values, so use a sentinel for the
-   "Unassigned" option. */
+   "Unassigned / use default" option. */
 const SENTINEL_NONE = '__none__'
 
 interface RefAssignmentRowProps {
   game: Game
 }
 
-/**
- * One game row in the Refs management page (organiser-only). Three
- * selects: Head, Line 1, Line 2.
- *
- *   - Head dropdown: only head-eligible refs.
- *   - Line dropdowns: all refs + a "Volunteer: <team>" option per team
- *     (rendered as a coloured swatch in the dropdown list).
- *   - Refs already assigned at the same time slot are filtered out, so
- *     no double-bookings. The currently-assigned ref of THIS slot is
- *     always kept in its own dropdown.
- */
 export function RefAssignmentRow({ game }: RefAssignmentRowProps) {
   const games = useTournamentStore((s) => s.games)
   const gameRefs = useTournamentStore((s) => s.gameRefs)
@@ -44,8 +38,6 @@ export function RefAssignmentRow({ game }: RefAssignmentRowProps) {
   const setHead = useTournamentStore((s) => s.setHead)
   const setLine = useTournamentStore((s) => s.setLine)
 
-  // Stable name-sorted list for the dropdowns. Refs are an unsorted
-  // record server-side; alphabetical here makes the picker scannable.
   const sortedRefs = useMemo(
     () => Object.values(refsMap).sort((a, b) => a.name.localeCompare(b.name)),
     [refsMap],
@@ -56,13 +48,9 @@ export function RefAssignmentRow({ game }: RefAssignmentRowProps) {
     lines: Array(TOURNAMENT.linesPerGame).fill(null),
   }
   const playingTeams = teamsPlayingAtSlot(TOURNAMENT, games, game.id)
-  // Refs whose own team is playing at this time slot — they're on
-  // the field as players, so they can't ref. Same currently-selected
-  // exception so an existing assignment doesn't disappear from view.
   const refsPlayingNow = refsBusyAsPlayers(TOURNAMENT, refsMap, games, game.id)
-  const takenForHead = refsTakenForSlot(TOURNAMENT, gameRefs, game.id, 'head')
+  const takenForHead = refsTakenForSlot(TOURNAMENT, games, gameRefs, game.id, 'head')
 
-  // Resolve team labels (for the row header).
   const getStar = () => computeStarTeam(TOURNAMENT, games)
   const teamA = resolveTeam(TOURNAMENT, games, game.teamA, getStar) ?? teamLabel(game.teamA)
   const teamB = resolveTeam(TOURNAMENT, games, game.teamB, getStar) ?? teamLabel(game.teamB)
@@ -101,22 +89,40 @@ export function RefAssignmentRow({ game }: RefAssignmentRowProps) {
           </SelectGroup>
         </SlotPicker>
 
-        {assignment.lines.map((slot, idx) => {
-          const takenForLine = refsTakenForSlot(TOURNAMENT, gameRefs, game.id, { line: idx })
+        {Array.from({ length: TOURNAMENT.linesPerGame }, (_, idx) => {
+          const stored = assignment.lines[idx] ?? null
+          const defaultSlot = game.defaultLines?.[idx] ?? null
+          const resolvedDefault = defaultSlot
+            ? resolveLineSlot(TOURNAMENT, games, defaultSlot)
+            : null
+          const defaultLabel = describeDefault(defaultSlot, resolvedDefault, refsMap)
+          // Slot is "empty" only when there's no override AND no
+          // default produces a value. Suppresses the red border on
+          // L1-L7 slots that auto-fill from R1 results.
+          const isEmpty = !stored && !resolvedDefault
+          const takenForLine = refsTakenForSlot(
+            TOURNAMENT,
+            games,
+            gameRefs,
+            game.id,
+            { line: idx },
+          )
           return (
             <SlotPicker
               key={idx}
               label={`Line ${idx + 1}`}
-              value={encodeSlot(slot)}
-              empty={!slot}
+              value={encodeSlot(stored)}
+              empty={isEmpty}
               onChange={(v) => setLine(game.id, idx, decodeSlot(v))}
             >
-              <SelectItem value={SENTINEL_NONE}>— Unassigned —</SelectItem>
+              <SelectItem value={SENTINEL_NONE}>
+                {defaultLabel ? `— Default: ${defaultLabel} —` : '— Unassigned —'}
+              </SelectItem>
               <SelectGroup>
                 <SelectLabel>Refs</SelectLabel>
                 {sortedRefs
-                  .filter((r) => !takenForLine.has(r.id) || isSlotRef(slot, r.id))
-                  .filter((r) => !refsPlayingNow.has(r.id) || isSlotRef(slot, r.id))
+                  .filter((r) => !takenForLine.has(r.id) || isSlotRef(stored, r.id))
+                  .filter((r) => !refsPlayingNow.has(r.id) || isSlotRef(stored, r.id))
                   .map((r) => (
                     <SelectItem key={r.id} value={`ref:${r.id}`}>
                       {r.name}
@@ -128,7 +134,7 @@ export function RefAssignmentRow({ game }: RefAssignmentRowProps) {
               <SelectGroup>
                 <SelectLabel>Volunteer team</SelectLabel>
                 {TOURNAMENT.teams
-                  .filter((t) => !playingTeams.has(t.name) || isSlotTeam(slot, t.name))
+                  .filter((t) => !playingTeams.has(t.name) || isSlotTeam(stored, t.name))
                   .map((t) => (
                     <SelectItem key={t.name} value={`team:${t.name}`}>
                       <span className="inline-flex items-center gap-2">
@@ -185,7 +191,10 @@ function decodeHead(value: string): RefId | null {
 function encodeSlot(slot: LineSlot): string {
   if (!slot) return SENTINEL_NONE
   if ('ref' in slot) return `ref:${slot.ref}`
-  return `team:${slot.team}`
+  if ('team' in slot) return `team:${slot.team}`
+  // {loserOf} should never be stored via the editor, only configured
+  // as a default — but defend against unexpected storage.
+  return SENTINEL_NONE
 }
 function decodeSlot(value: string): LineSlot {
   if (value === SENTINEL_NONE) return null
@@ -200,4 +209,22 @@ function isSlotRef(slot: LineSlot, refId: RefId): boolean {
 
 function isSlotTeam(slot: LineSlot, team: TeamName): boolean {
   return !!slot && 'team' in slot && slot.team === team
+}
+
+/** Human label for the SelectItem that represents "use the default". */
+function describeDefault(
+  def: LineSlot,
+  resolved: ReturnType<typeof resolveLineSlot>,
+  refsMap: Record<RefId, { id: RefId; name: string }>,
+): string | null {
+  if (!def) return null
+  // Prefix loserOf defaults as "Lk" so refs / organisers recognise
+  // the convention from the league spreadsheet.
+  const prefix = 'loserOf' in def ? `L${def.loserOf}: ` : ''
+  if (!resolved) return prefix ? `${prefix}pending` : null
+  if ('ref' in resolved) {
+    const r = refsMap[resolved.ref]
+    return `${prefix}${r?.name ?? 'Unknown ref'}`
+  }
+  return `${prefix}${resolved.team}`
 }

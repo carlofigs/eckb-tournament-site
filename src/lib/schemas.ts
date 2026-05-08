@@ -37,6 +37,13 @@ export interface Game {
   teamB: TeamRef
   /** Optional pack-up note shown on the card. */
   packUp?: string
+  /**
+   * Default line-ref slots used when the live DB value is null. The
+   * Refs editor still lets organisers override per-slot; "unassigned"
+   * in the DB falls back to the default here. Length should match
+   * `Tournament.linesPerGame`.
+   */
+  defaultLines?: LineSlot[]
 }
 
 /* ── Time slot ─────────────────────────────────────────────────────── */
@@ -65,11 +72,14 @@ export interface Ref {
   team?: TeamName | null
 }
 
-/** A single line-ref slot; null means unassigned. */
+/** A single line-ref slot. `loserOf` resolves at render time to the
+ *  team that lost the named game (and special-cases the Star team —
+ *  see Tournament.starSubstituteRefId). */
 export type LineSlot =
   | null
   | { ref: RefId }
   | { team: TeamName }
+  | { loserOf: GameId }
 
 export interface GameRefAssignment {
   head: RefId | null
@@ -99,6 +109,13 @@ export interface Tournament {
    * them. Edit per-tournament.
    */
   pins: { ref: string; organiser: string }
+  /**
+   * Optional ref id that substitutes for a `{ loserOf: G }` slot when
+   * the loser of game G turns out to be the Star team (and is therefore
+   * busy playing Game 12 instead of refereeing). Set to a ref who's
+   * reliably available across the QF time slot.
+   */
+  starSubstituteRefId?: RefId
 }
 
 /* ── Persisted state ──────────────────────────────────────────────── */

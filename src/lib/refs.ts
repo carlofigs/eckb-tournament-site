@@ -3,38 +3,94 @@ import type {
   GameId,
   GameRefAssignment,
   GameScore,
+  LineSlot,
   Ref,
   RefId,
   TeamName,
   Tournament,
 } from '@/lib/schemas'
-import { gameDef, resolveTeam } from '@/lib/games'
+import { gameDef, getLoser, resolveTeam } from '@/lib/games'
 import { computeStarTeam } from '@/lib/star'
 
 /**
- * If `refId` is assigned to `assignment` (head or line), returns
- * "Head" / "Line 1" / "Line 2" / etc. Returns null if the ref isn't
- * involved in this game. Used by MyGames to label cards and by
- * canEditScore (below) for permission checks.
+ * Effective line slots for a game: stored DB value if present, else
+ * the config-driven default. Always returns an array of length
+ * `linesPerGame`. Stored `null` (organiser cleared the override)
+ * falls back to the default — that's intentional, "Unassigned" in
+ * the UI means "clear my override and use the default".
  */
-export function getRefRoleInGame(
-  assignment: GameRefAssignment | undefined,
-  refId: RefId,
-): string | null {
-  if (!assignment) return null
-  if (assignment.head === refId) return 'Head'
-  const idx = assignment.lines.findIndex(
-    (slot) => slot && 'ref' in slot && slot.ref === refId,
-  )
-  return idx >= 0 ? `Line ${idx + 1}` : null
+export function effectiveLines(
+  t: Tournament,
+  gameRefs: Record<GameId, GameRefAssignment>,
+  gameId: GameId,
+): LineSlot[] {
+  const def = gameDef(t, gameId)
+  if (!def) return []
+  const stored = gameRefs[gameId]?.lines ?? []
+  return Array.from({ length: t.linesPerGame }, (_, i) => {
+    const own = stored[i] ?? null
+    if (own) return own
+    return def.defaultLines?.[i] ?? null
+  })
 }
 
 /**
- * Role-aware editability check. Mirrors the legacy version:
- *   - organiser: every game
- *   - ref:       only games where they're the head ref or one of the
- *                line refs (i.e. assigned to that game)
- *   - player:    nothing
+ * Resolve a `LineSlot` to its concrete display/permission shape:
+ * `null`, `{ ref }`, or `{ team }`. The `{ loserOf: G }` variant
+ * resolves to whichever team lost game G — and special-cases the
+ * Star team: when the loser of G turns out to BE the Star (so they're
+ * busy playing Game 12 across the QF slot), the slot resolves to
+ * `tournament.starSubstituteRefId` instead.
+ */
+export function resolveLineSlot(
+  t: Tournament,
+  scores: Record<GameId, GameScore>,
+  slot: LineSlot,
+): null | { ref: RefId } | { team: TeamName } {
+  if (!slot) return null
+  if ('ref' in slot) return slot
+  if ('team' in slot) return slot
+  // { loserOf: G }
+  const getStar = () => computeStarTeam(t, scores)
+  const loser = getLoser(t, scores, slot.loserOf, getStar)
+  if (!loser) return null
+  if (loser === getStar() && t.starSubstituteRefId) {
+    return { ref: t.starSubstituteRefId }
+  }
+  return { team: loser }
+}
+
+/**
+ * If `refId` is assigned (head or effective+resolved line) to this
+ * game, returns "Head" / "Line 1" / etc. Used by MyGames to label
+ * cards and by canEditScore (below) for permission checks.
+ */
+export function getRefRoleInGame(
+  t: Tournament,
+  scores: Record<GameId, GameScore>,
+  gameRefs: Record<GameId, GameRefAssignment>,
+  gameId: GameId,
+  refId: RefId,
+): string | null {
+  const a = gameRefs[gameId]
+  if (a?.head === refId) return 'Head'
+  const lines = effectiveLines(t, gameRefs, gameId)
+  for (let i = 0; i < lines.length; i++) {
+    const r = resolveLineSlot(t, scores, lines[i])
+    if (r && 'ref' in r && r.ref === refId) return `Line ${i + 1}`
+  }
+  return null
+}
+
+/**
+ * Role-aware editability check. Score input is restricted to:
+ *   - organisers (every game)
+ *   - the HEAD REF of the game (line refs and volunteer-team players
+ *     don't get score-entry access — they assist the head ref)
+ *   - players: nothing
+ *
+ * Line-ref assignments are still rendered (badges, MyGames) so the
+ * line ref knows their duty; they just don't input the score.
  */
 export function canEditScore(
   auth: AuthState,
@@ -43,18 +99,19 @@ export function canEditScore(
 ): boolean {
   if (auth.role === 'organiser') return true
   if (auth.role === 'ref' && auth.refId) {
-    return getRefRoleInGame(gameRefs[gameId], auth.refId) !== null
+    return gameRefs[gameId]?.head === auth.refId
   }
   return false
 }
 
 /**
- * Refs assigned (head or line) to *other* games at the same time slot.
- * Used to filter the dropdowns so an organiser can't double-book a ref
- * across concurrent games.
+ * Refs assigned (head or effective+resolved line) to *other* games at
+ * the same time slot. Used to filter the dropdowns so an organiser
+ * can't double-book a ref across concurrent games.
  */
 export function refsAtSameSlot(
   t: Tournament,
+  scores: Record<GameId, GameScore>,
   gameRefs: Record<GameId, GameRefAssignment>,
   gameId: GameId,
 ): Set<RefId> {
@@ -64,10 +121,10 @@ export function refsAtSameSlot(
   for (const og of t.games) {
     if (og.id === gameId || og.time !== def.time) continue
     const r = gameRefs[og.id]
-    if (!r) continue
-    if (r.head) conflicts.add(r.head)
-    for (const slot of r.lines) {
-      if (slot && 'ref' in slot) conflicts.add(slot.ref)
+    if (r?.head) conflicts.add(r.head)
+    for (const slot of effectiveLines(t, gameRefs, og.id)) {
+      const resolved = resolveLineSlot(t, scores, slot)
+      if (resolved && 'ref' in resolved) conflicts.add(resolved.ref)
     }
   }
   return conflicts
@@ -88,20 +145,22 @@ export type SlotKey = 'head' | { line: number }
 
 export function refsTakenForSlot(
   t: Tournament,
+  scores: Record<GameId, GameScore>,
   gameRefs: Record<GameId, GameRefAssignment>,
   gameId: GameId,
   exceptSlot: SlotKey,
 ): Set<RefId> {
-  const taken = refsAtSameSlot(t, gameRefs, gameId)
+  const taken = refsAtSameSlot(t, scores, gameRefs, gameId)
   const own = gameRefs[gameId]
-  if (!own) return taken
   // Other slots of the same game.
-  if (exceptSlot !== 'head' && own.head) {
+  if (exceptSlot !== 'head' && own?.head) {
     taken.add(own.head)
   }
-  own.lines.forEach((slot, idx) => {
+  effectiveLines(t, gameRefs, gameId).forEach((slot, idx) => {
     const isExcepted = typeof exceptSlot === 'object' && exceptSlot.line === idx
-    if (!isExcepted && slot && 'ref' in slot) taken.add(slot.ref)
+    if (isExcepted) return
+    const resolved = resolveLineSlot(t, scores, slot)
+    if (resolved && 'ref' in resolved) taken.add(resolved.ref)
   })
   return taken
 }
