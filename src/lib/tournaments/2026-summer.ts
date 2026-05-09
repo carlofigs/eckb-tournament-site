@@ -116,8 +116,8 @@ export const summer2026: Tournament = {
   // assigned games only; the Organiser PIN unlocks everything + the
   // Refs management tab + admin tools.
   pins: {
-    ref: '0000',
-    organiser: '1111',
+    ref: '4837',
+    organiser: '7261',
   },
 
   // When a QF line-slot's `{ loserOf: G }` resolves to the Star team,
