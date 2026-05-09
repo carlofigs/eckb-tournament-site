@@ -70,6 +70,15 @@ export interface Ref {
    * undefined = no affiliation, no extra filtering.
    */
   team?: TeamName | null
+  /**
+   * Personal sign-in PIN for head-eligible refs. When set, entering
+   * this PIN in the sign-in dialog signs them in directly (skipping
+   * the name-picker step). Non-head-eligible refs sign in via the
+   * shared `Tournament.pins.ref` instead and pick their name from a
+   * filtered list. Null/undefined = no personal PIN set; use the
+   * shared one.
+   */
+  pin?: string | null
 }
 
 /** A single line-ref slot. `loserOf` resolves at render time to the

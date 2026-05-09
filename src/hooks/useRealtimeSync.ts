@@ -121,6 +121,7 @@ export function useRealtimeSync() {
             name: row.name,
             headEligible: row.head_eligible,
             team: row.team ?? null,
+            pin: row.pin ?? null,
           })
           markSync()
         },

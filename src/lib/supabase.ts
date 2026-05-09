@@ -44,6 +44,8 @@ export interface DbRef {
   head_eligible: boolean
   /** Optional team affiliation; null when the ref isn't on a roster. */
   team: string | null
+  /** Personal sign-in PIN for head-eligible refs; null otherwise. */
+  pin: string | null
   updated_at: string
 }
 

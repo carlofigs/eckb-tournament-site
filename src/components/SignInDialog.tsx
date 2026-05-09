@@ -28,53 +28,66 @@ interface SignInDialogProps {
 type Step = 'pin' | 'ref-name'
 
 /**
- * Two-step sign-in:
- *  1. PIN entry. Organiser PIN signs in directly. Ref PIN advances to
- *     step 2.
- *  2. Pick which ref you are from the roster (only shown after ref PIN
- *     was correct in step 1).
+ * Sign-in flow:
  *
- * Auth state is stored per-device by `useAuthStore` so refs only do
- * this once on each phone they bring to the fields.
+ *   Organiser PIN          → sign in directly
+ *   A head ref's own PIN   → sign in directly as that ref
+ *   Universal line-ref PIN → step 2: pick name from non-head refs
+ *   Wrong / empty          → error
+ *
+ * Auth state is stored per-device by `useAuthStore` so refs only sign
+ * in once on each phone they bring to the fields.
  */
 export function SignInDialog({ open, onOpenChange }: SignInDialogProps) {
+  const checkPin = useAuthStore((s) => s.checkPin)
   const signInOrganiser = useAuthStore((s) => s.signInOrganiser)
-  const isRefPin = useAuthStore((s) => s.isRefPin)
   const signInRef = useAuthStore((s) => s.signInRef)
   const refsMap = useTournamentStore((s) => s.refs)
-  const sortedRefs = useMemo(
-    () => Object.values(refsMap).sort((a, b) => a.name.localeCompare(b.name)),
+
+  // Step 2's roster picker is filtered to non-head refs — head refs
+  // identify themselves via their personal PIN, not the picker.
+  const lineRefs = useMemo(
+    () =>
+      Object.values(refsMap)
+        .filter((r) => !r.headEligible)
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [refsMap],
   )
 
   const [step, setStep] = useState<Step>('pin')
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [chosenRef, setChosenRef] = useState<string>(sortedRefs[0]?.id ?? '')
+  const [chosenRef, setChosenRef] = useState<string>(lineRefs[0]?.id ?? '')
 
-  // Reset when dialog reopens.
   useEffect(() => {
     if (open) {
       setStep('pin')
       setPin('')
       setError(null)
-      setChosenRef(sortedRefs[0]?.id ?? '')
+      setChosenRef(lineRefs[0]?.id ?? '')
     }
-  }, [open, sortedRefs])
+  }, [open, lineRefs])
 
   const handleConfirm = () => {
     if (step === 'pin') {
-      if (signInOrganiser(pin)) {
-        onOpenChange(false)
-        return
+      const match = checkPin(pin)
+      switch (match.kind) {
+        case 'organiser':
+          signInOrganiser()
+          onOpenChange(false)
+          return
+        case 'head-ref':
+          signInRef(match.refId)
+          onOpenChange(false)
+          return
+        case 'line-ref':
+          setStep('ref-name')
+          setError(null)
+          return
+        case 'invalid':
+          setError('Wrong PIN.')
+          return
       }
-      if (isRefPin(pin)) {
-        setStep('ref-name')
-        setError(null)
-        return
-      }
-      setError('Wrong PIN.')
-      return
     }
     // step === 'ref-name'
     if (!chosenRef) return
@@ -91,8 +104,8 @@ export function SignInDialog({ open, onOpenChange }: SignInDialogProps) {
           </DialogTitle>
           <DialogDescription>
             {step === 'pin'
-              ? 'Enter your PIN to unlock score editing.'
-              : 'Pick your name from the roster.'}
+              ? 'Enter your PIN. Head refs use their personal PIN; line refs use the shared one.'
+              : 'Pick your name from the line-ref roster.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -104,10 +117,10 @@ export function SignInDialog({ open, onOpenChange }: SignInDialogProps) {
             <Input
               id="auth-pin"
               type="password"
-              inputMode="numeric"
+              inputMode="text"
               autoComplete="off"
-              maxLength={8}
-              placeholder="••••"
+              maxLength={16}
+              placeholder="••••••"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               onKeyDown={(e) => {
@@ -122,18 +135,25 @@ export function SignInDialog({ open, onOpenChange }: SignInDialogProps) {
         ) : (
           <div className="space-y-2">
             <Label htmlFor="auth-ref">Ref</Label>
-            <Select value={chosenRef} onValueChange={setChosenRef}>
-              <SelectTrigger id="auth-ref">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {sortedRefs.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {lineRefs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No line refs in the roster. Ask the organiser to add you, or
+                use a head-ref personal PIN if you have one.
+              </p>
+            ) : (
+              <Select value={chosenRef} onValueChange={setChosenRef}>
+                <SelectTrigger id="auth-ref">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {lineRefs.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         )}
 
@@ -141,7 +161,7 @@ export function SignInDialog({ open, onOpenChange }: SignInDialogProps) {
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm}>
+          <Button onClick={handleConfirm} disabled={step === 'ref-name' && !chosenRef}>
             {step === 'pin' ? 'Continue' : 'Sign in'}
           </Button>
         </DialogFooter>

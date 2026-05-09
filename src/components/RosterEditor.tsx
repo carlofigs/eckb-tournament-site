@@ -63,14 +63,15 @@ export function RosterEditor() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
+          <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="text-[0.7rem] uppercase tracking-wider text-muted-foreground">
                 <th className="text-left px-3 py-2 font-extrabold">Name</th>
-                <th className="px-3 py-2 font-extrabold w-24">Head</th>
-                <th className="text-left px-3 py-2 font-extrabold w-44">
-                  Team <span className="font-normal normal-case text-muted-foreground/80">(optional)</span>
+                <th className="px-3 py-2 font-extrabold w-20">Head</th>
+                <th className="text-left px-3 py-2 font-extrabold w-40">
+                  Team <span className="font-normal normal-case text-muted-foreground/80">(opt)</span>
                 </th>
+                <th className="text-left px-3 py-2 font-extrabold w-32">PIN</th>
                 <th className="px-3 py-2 font-extrabold w-12" aria-label="Actions" />
               </tr>
             </thead>
@@ -123,6 +124,26 @@ export function RosterEditor() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    {r.headEligible ? (
+                      <Input
+                        value={r.pin ?? ''}
+                        onChange={(e) =>
+                          updateRef(r.id, { pin: e.target.value || null })
+                        }
+                        placeholder="set PIN"
+                        className="h-8 text-sm font-mono"
+                        aria-label={`PIN for ${r.name}`}
+                      />
+                    ) : (
+                      <span
+                        className="text-xs text-muted-foreground italic"
+                        title="Line-only refs use the shared line-ref PIN"
+                      >
+                        — shared —
+                      </span>
+                    )}
                   </td>
                   <td className="px-2 py-1.5 text-right">
                     <Button

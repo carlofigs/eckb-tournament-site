@@ -10,11 +10,12 @@ The site lives at **<https://carlofigs.github.io/kickball-tournament-site/>**. A
 
 1. Open the site on your phone.
 2. Top right of the sticky banner there's a 🔒 with "Sign in".
-3. Enter the **ref PIN** (the organiser will share it on the day).
-4. Pick your name from the dropdown.
-5. Done — your phone remembers you across reloads. The lock icon turns green and shows your name.
+3. Enter your **PIN**:
+    - **Head refs** have a personal PIN — the organiser will hand it to you on the day. Entering it signs you in directly as yourself.
+    - **Line-only refs** use a shared PIN, then pick your name from a list of non-head refs.
+4. Done — your phone remembers you across reloads. The lock icon turns green and shows your name.
 
-If your phone keyboard auto-suggests numbers, tap once to focus the PIN field; numbers only.
+PINs are case-sensitive. If the keyboard auto-suggests autocorrect or capitalisation, tap to dismiss before typing.
 
 ---
 
