@@ -72,11 +72,11 @@ export const summer2026: Tournament = {
     // default — it's manually assigned.
     { id: 9,  round: 'QF', time: '2:30 pm',  field: 'Road Field',   teamA: { winnerOf: 1 },  teamB: { winnerOf: 2 }, defaultLines: [{ loserOf: 1 }, { loserOf: 2 }] },
     { id: 10, round: 'QF', time: '2:30 pm',  field: 'Middle Field', teamA: { winnerOf: 3 },  teamB: { winnerOf: 4 }, defaultLines: [{ loserOf: 3 }, { loserOf: 4 }] },
-    { id: 11, round: 'QF', time: '2:30 pm',  field: 'Kiosk Field',  teamA: { winnerOf: 5 },  teamB: { winnerOf: 6 }, packUp: 'Loser packs up Kiosk Field', defaultLines: [{ loserOf: 5 }, { loserOf: 6 }] },
-    { id: 12, round: 'QF', time: '2:30 pm',  field: 'Water Field',  teamA: { winnerOf: 7 },  teamB: { star: true },  packUp: 'Loser packs up Water Field',  defaultLines: [null, { loserOf: 7 }] },
+    { id: 11, round: 'QF', time: '2:30 pm',  field: 'Kiosk Field',  teamA: { winnerOf: 5 },  teamB: { winnerOf: 6 }, packUp: 'Defeated team packs up Kiosk Field', defaultLines: [{ loserOf: 5 }, { loserOf: 6 }] },
+    { id: 12, round: 'QF', time: '2:30 pm',  field: 'Water Field',  teamA: { winnerOf: 7 },  teamB: { star: true },  packUp: 'Defeated team packs up Water Field',  defaultLines: [null, { loserOf: 7 }] },
     { id: 13, round: 'SF', time: '3:15 pm',  field: 'Road Field',   teamA: { winnerOf: 10 }, teamB: { winnerOf: 9 } },
-    { id: 14, round: 'SF', time: '3:15 pm',  field: 'Middle Field', teamA: { winnerOf: 11 }, teamB: { winnerOf: 12 }, packUp: 'Loser packs up Middle Field' },
-    { id: 15, round: 'F',  time: '4:00 pm',  field: 'Road Field',   teamA: { winnerOf: 13 }, teamB: { winnerOf: 14 }, packUp: 'Loser packs up Road Field' },
+    { id: 14, round: 'SF', time: '3:15 pm',  field: 'Middle Field', teamA: { winnerOf: 11 }, teamB: { winnerOf: 12 }, packUp: 'Defeated team packs up Middle Field' },
+    { id: 15, round: 'F',  time: '4:00 pm',  field: 'Road Field',   teamA: { winnerOf: 13 }, teamB: { winnerOf: 14 }, packUp: 'Defeated team packs up Road Field' },
   ],
 
   // Roster compiled from the league's first 6 games of refereeing
