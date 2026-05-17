@@ -4,6 +4,7 @@ import { TOURNAMENT } from '@/lib/tournament'
 import { useTournamentStore } from '@/store/tournament'
 import { useSyncStore } from '@/store/sync'
 import { pushRef } from '@/lib/sync'
+import { fetchTournamentGames } from '@/lib/supabase/queries/games'
 import type {
   Announcement,
   GameId,
@@ -36,10 +37,25 @@ import type {
  */
 export function useInitialSync() {
   const importState = useTournamentStore((s) => s.importState)
+  const setFixtures = useTournamentStore((s) => s.setFixtures)
+  const setFixturesError = useTournamentStore((s) => s.setFixturesError)
   const markSync = useSyncStore((s) => s.markSync)
 
   const fetchAll = useCallback(async () => {
     if (!supabase) return
+
+    // Fixtures: fetch once on mount (and again on tab-resume in case
+    // resolved team names have been written back to the games table).
+    // Errors are surfaced via fixturesError so AppShell can show an
+    // explicit error state rather than silently showing an empty bracket.
+    fetchTournamentGames(TOURNAMENT.id)
+      .then(setFixtures)
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.warn('Fixtures fetch failed:', msg)
+        setFixturesError(msg)
+      })
+
     const [scoresResult, gameRefsResult, rosterResult, announcementResult] =
       await Promise.all([
         supabase

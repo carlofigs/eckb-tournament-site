@@ -7,6 +7,7 @@ import { useTournamentStore } from '@/store/tournament'
 import { nextSlot } from '@/lib/games'
 import { TOURNAMENT } from '@/lib/tournament'
 import { cn } from '@/lib/utils'
+import type { Game } from '@/lib/schemas'
 
 /**
  * Top-level layout. Sticky banner with: pride stripe → Up Next summary
@@ -33,9 +34,12 @@ const TABS: Array<{
 ]
 
 export function AppShell() {
-  const role = useAuthStore((s) => s.role)
-  const games = useTournamentStore((s) => s.games)
-  const slot = nextSlot(TOURNAMENT.games, games, TOURNAMENT.timeSlots)
+  const role           = useAuthStore((s) => s.role)
+  const games          = useTournamentStore((s) => s.games)
+  const fixtures       = useTournamentStore((s) => s.fixtures)
+  const fixturesLoaded = useTournamentStore((s) => s.fixturesLoaded)
+  const fixturesError  = useTournamentStore((s) => s.fixturesError)
+  const slot = nextSlot(fixtures, games, TOURNAMENT.timeSlots)
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -48,7 +52,9 @@ export function AppShell() {
             className="flex-1 min-w-0 px-3 py-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm"
             aria-live="polite"
           >
-            {slot ? (
+            {!fixturesLoaded ? (
+              <span className="text-neutral-400 text-xs animate-pulse">Loading schedule…</span>
+            ) : slot ? (
               <>
                 <span className="inline-block rounded bg-pride-mint text-pride-mint-deep px-1.5 py-0.5 text-[0.7rem] font-extrabold uppercase tracking-wider">
                   Up Next
@@ -100,7 +106,24 @@ export function AppShell() {
       </header>
 
       <main className="flex-1 px-4 py-6 max-w-[1100px] w-full mx-auto">
-        <Outlet />
+        {fixturesError ? (
+          <div
+            role="alert"
+            className="rounded-xl border border-destructive bg-destructive/10 text-destructive p-4 text-sm"
+          >
+            <p className="font-extrabold mb-1">Failed to load schedule</p>
+            <p className="text-xs opacity-80">{fixturesError}</p>
+            <p className="text-xs mt-2 opacity-70">
+              Reload the page to retry. Scores already entered are safe in local storage.
+            </p>
+          </div>
+        ) : !fixturesLoaded ? (
+          <div className="flex items-center justify-center py-24 text-muted-foreground text-sm animate-pulse">
+            Loading schedule…
+          </div>
+        ) : (
+          <Outlet />
+        )}
       </main>
 
       <footer className="py-6 text-center text-xs text-muted-foreground">
@@ -110,7 +133,7 @@ export function AppShell() {
   )
 }
 
-function nextSlotRoundLabel(games: typeof TOURNAMENT.games): string {
+function nextSlotRoundLabel(games: Game[]): string {
   const rounds = Array.from(new Set(games.map((g) => TOURNAMENT.rounds[g.round])))
   return rounds.join(' / ')
 }

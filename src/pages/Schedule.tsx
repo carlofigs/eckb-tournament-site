@@ -1,4 +1,5 @@
 import { TOURNAMENT } from '@/lib/tournament'
+import { useTournamentStore } from '@/store/tournament'
 import { GameRow } from '@/components/GameRow'
 
 /**
@@ -8,6 +9,8 @@ import { GameRow } from '@/components/GameRow'
  * organisers see editable inputs everywhere.
  */
 export function Schedule() {
+  const fixtures = useTournamentStore((s) => s.fixtures)
+
   return (
     <section>
       <h2 className="text-xl font-extrabold mb-1">Schedule</h2>
@@ -17,10 +20,8 @@ export function Schedule() {
 
       <div className="space-y-4">
         {TOURNAMENT.timeSlots.map((slot) => {
-          const slotGames = TOURNAMENT.games.filter((g) => g.time === slot.time)
-          const fieldsLine = slotGames
-            .map((g) => g.field.replace(' Field', ''))
-            .join(' · ')
+          const slotGames = fixtures.filter((g) => g.time === slot.time)
+          const fieldsLine = slotGames.map((g) => g.field).join(' · ')
           return (
             <div key={slot.time}>
               <div className="flex items-center justify-between bg-secondary border rounded-t-lg px-3 py-2">

@@ -11,8 +11,9 @@ import { Swatch } from '@/components/Swatch'
  * once" reality of the day.
  */
 export function NextSlotCard() {
-  const games = useTournamentStore((s) => s.games)
-  const slot = nextSlot(TOURNAMENT.games, games, TOURNAMENT.timeSlots)
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
+  const slot = nextSlot(fixtures, games, TOURNAMENT.timeSlots)
 
   if (!slot) {
     return (
@@ -56,10 +57,12 @@ export function NextSlotCard() {
 }
 
 function NextSlotGame({ game }: { game: Game }) {
-  const games = useTournamentStore((s) => s.games)
-  const getStar = () => computeStarTeam(TOURNAMENT, games)
-  const teamA = resolveTeam(TOURNAMENT, games, game.teamA, getStar)
-  const teamB = resolveTeam(TOURNAMENT, games, game.teamB, getStar)
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
+  const t = { ...TOURNAMENT, games: fixtures }
+  const getStar = () => computeStarTeam(t, games)
+  const teamA = resolveTeam(t, games, game.teamA, getStar)
+  const teamB = resolveTeam(t, games, game.teamB, getStar)
   const labelA = teamA ?? teamLabel(game.teamA)
   const labelB = teamB ?? teamLabel(game.teamB)
 

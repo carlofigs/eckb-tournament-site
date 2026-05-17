@@ -6,9 +6,10 @@ import { isComplete } from '@/lib/games'
 import { NextSlotCard } from '@/components/NextSlotCard'
 
 export function Home() {
-  const games = useTournamentStore((s) => s.games)
-  const total = TOURNAMENT.games.length
-  const played = TOURNAMENT.games.filter((g) => isComplete(games[g.id])).length
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
+  const total = fixtures.length
+  const played = fixtures.filter((g) => isComplete(games[g.id])).length
   const remaining = total - played
 
   return (

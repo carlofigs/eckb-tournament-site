@@ -1,4 +1,4 @@
-import { TOURNAMENT } from '@/lib/tournament'
+import { useTournamentStore } from '@/store/tournament'
 import { BracketGame } from '@/components/BracketGame'
 
 /**
@@ -12,12 +12,13 @@ import { BracketGame } from '@/components/BracketGame'
  *   - SF pair:   G13, G14 → feeds G15
  */
 export function BracketTree() {
-  const qfGames = TOURNAMENT.games.filter((g) => g.round === 'QF')
-  const sfGames = TOURNAMENT.games.filter((g) => g.round === 'SF')
-  const fGames = TOURNAMENT.games.filter((g) => g.round === 'F')
+  const fixtures = useTournamentStore((s) => s.fixtures)
+  const qfGames = fixtures.filter((g) => g.round === 'QF')
+  const sfGames = fixtures.filter((g) => g.round === 'SF')
+  const fGames  = fixtures.filter((g) => g.round === 'F')
 
   // Group QF into pairs of 2 — feeds two SF games.
-  const qfPairs: typeof qfGames[] = []
+  const qfPairs: (typeof qfGames)[] = []
   for (let i = 0; i < qfGames.length; i += 2) {
     qfPairs.push(qfGames.slice(i, i + 2))
   }

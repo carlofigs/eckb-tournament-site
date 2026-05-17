@@ -1,5 +1,6 @@
 import { TOURNAMENT } from '@/lib/tournament'
 import { useAuthStore } from '@/store/auth'
+import { useTournamentStore } from '@/store/tournament'
 import { RefAssignmentRow } from '@/components/RefAssignmentRow'
 import { RosterEditor } from '@/components/RosterEditor'
 
@@ -10,7 +11,8 @@ import { RosterEditor } from '@/components/RosterEditor'
  * editable controls.
  */
 export function Refs() {
-  const role = useAuthStore((s) => s.role)
+  const role     = useAuthStore((s) => s.role)
+  const fixtures = useTournamentStore((s) => s.fixtures)
 
   if (role !== 'organiser') {
     return (
@@ -43,7 +45,7 @@ export function Refs() {
       </p>
 
       <div className="space-y-2">
-        {TOURNAMENT.games.map((g) => (
+        {fixtures.map((g) => (
           <RefAssignmentRow key={g.id} game={g} />
         ))}
       </div>

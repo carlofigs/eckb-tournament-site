@@ -16,16 +16,18 @@ interface BracketGameProps {
  * Schedule page is where scores are entered.
  */
 export function BracketGame({ game }: BracketGameProps) {
-  const games = useTournamentStore((s) => s.games)
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
 
-  const getStar = () => computeStarTeam(TOURNAMENT, games)
-  const teamA = resolveTeam(TOURNAMENT, games, game.teamA, getStar)
-  const teamB = resolveTeam(TOURNAMENT, games, game.teamB, getStar)
+  const t = { ...TOURNAMENT, games: fixtures }
+  const getStar = () => computeStarTeam(t, games)
+  const teamA = resolveTeam(t, games, game.teamA, getStar)
+  const teamB = resolveTeam(t, games, game.teamB, getStar)
   const labelA = teamA ?? teamLabel(game.teamA)
   const labelB = teamB ?? teamLabel(game.teamB)
   const score = games[game.id] ?? { scoreA: null, scoreB: null }
   const decided = isComplete(score)
-  const winner = getWinner(TOURNAMENT, games, game.id, getStar)
+  const winner = getWinner(t, games, game.id, getStar)
 
   const isFinal = game.round === 'F'
 

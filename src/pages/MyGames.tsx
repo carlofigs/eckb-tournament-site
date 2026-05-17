@@ -18,27 +18,29 @@ import type { Game, RefId } from '@/lib/schemas'
  * is a fallback for direct navigation to /my-games.
  */
 export function MyGames() {
-  const role = useAuthStore((s) => s.role)
-  const refId = useAuthStore((s) => s.refId)
-  const refsMap = useTournamentStore((s) => s.refs)
+  const role     = useAuthStore((s) => s.role)
+  const refId    = useAuthStore((s) => s.refId)
+  const refsMap  = useTournamentStore((s) => s.refs)
   const gameRefs = useTournamentStore((s) => s.gameRefs)
-  const games = useTournamentStore((s) => s.games)
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
 
   // Sort by the time-slot index (so "12:00 pm" sorts before "1:00 pm"
   // even though it doesn't lexicographically), then by game id within
   // the same slot.
   const myGames = useMemo(() => {
     if (!refId) return []
+    const t = { ...TOURNAMENT, games: fixtures }
     const slotOrder = TOURNAMENT.timeSlots.map((s) => s.time)
-    return TOURNAMENT.games
+    return fixtures
       .filter(
-        (g) => getRefRoleInGame(TOURNAMENT, games, gameRefs, g.id, refId) !== null,
+        (g) => getRefRoleInGame(t, games, gameRefs, g.id, refId) !== null,
       )
       .sort((a, b) => {
         const idx = slotOrder.indexOf(a.time) - slotOrder.indexOf(b.time)
         return idx !== 0 ? idx : a.id - b.id
       })
-  }, [refId, gameRefs, games])
+  }, [refId, gameRefs, games, fixtures])
 
   if (role !== 'ref' || !refId) {
     return (
@@ -92,8 +94,10 @@ export function MyGames() {
 
 function MyGameCard({ game, refId }: { game: Game; refId: RefId }) {
   const gameRefs = useTournamentStore((s) => s.gameRefs)
-  const games = useTournamentStore((s) => s.games)
-  const myRole = getRefRoleInGame(TOURNAMENT, games, gameRefs, game.id, refId)
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
+  const t = { ...TOURNAMENT, games: fixtures }
+  const myRole = getRefRoleInGame(t, games, gameRefs, game.id, refId)
   const done = isComplete(games[game.id])
 
   return (

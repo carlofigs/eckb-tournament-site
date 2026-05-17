@@ -12,8 +12,10 @@ import { Swatch } from '@/components/Swatch'
 import { cn } from '@/lib/utils'
 
 export function Standings() {
-  const games = useTournamentStore((s) => s.games)
-  const losers = r1Losers(TOURNAMENT, games)
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
+  const t = { ...TOURNAMENT, games: fixtures }
+  const losers = r1Losers(t, games)
 
   return (
     <section className="space-y-6">
@@ -48,8 +50,9 @@ export function Standings() {
 }
 
 function PendingNotice() {
-  const games = useTournamentStore((s) => s.games)
-  const r1 = TOURNAMENT.games.filter((g) => g.round === 'R1')
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
+  const r1 = fixtures.filter((g) => g.round === 'R1')
   const done = r1.filter((g) => isComplete(games[g.id])).length
   return (
     <div className="bg-card border rounded-lg p-4 text-sm">
@@ -122,13 +125,15 @@ function LoserTable({ losers }: { losers: ReturnType<typeof r1Losers> }) {
    ─────────────────────────────────────────────────────────────────── */
 
 function CurrentStandingsTable() {
-  const games = useTournamentStore((s) => s.games)
-  const getStar = () => computeStarTeam(TOURNAMENT, games)
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
+  const t = { ...TOURNAMENT, games: fixtures }
+  const getStar = () => computeStarTeam(t, games)
 
   const rows = TOURNAMENT.teams
-    .map((t) => ({
-      team: t.name,
-      status: getTeamStatus(TOURNAMENT, games, t.name, getStar),
+    .map((team) => ({
+      team: team.name,
+      status: getTeamStatus(t, games, team.name, getStar),
     }))
     .sort((a, b) => {
       const k = statusSortKey(a.status) - statusSortKey(b.status)

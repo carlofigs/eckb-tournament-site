@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import type {
   Announcement,
+  Game,
   GameId,
   GameRefAssignment,
   GameScore,
@@ -84,6 +85,18 @@ function initialState(): TournamentState {
 }
 
 interface TournamentStore extends TournamentState {
+  /**
+   * Fixture array loaded from public.games. Empty until useInitialSync
+   * completes the fetch. All components that previously read
+   * TOURNAMENT.games should read this instead.
+   */
+  fixtures: Game[]
+  fixturesLoaded: boolean
+  fixturesError: string | null
+  /** Called by useInitialSync once the games query resolves. */
+  setFixtures: (fixtures: Game[]) => void
+  setFixturesError: (err: string) => void
+
   /** User-driven mutations: optimistic local update + push to Supabase. */
   setScore: (id: GameId, side: 'A' | 'B', value: number | null) => void
   setHead: (id: GameId, refId: RefId | null) => void
@@ -120,6 +133,31 @@ export const useTournamentStore = create<TournamentStore>()(
   persist(
     immer((set) => ({
       ...initialState(),
+
+      // ── Fixtures (loaded from Supabase games table) ────────────────
+      fixtures: [],
+      fixturesLoaded: false,
+      fixturesError: null,
+
+      setFixtures: (fixtures) =>
+        set((s) => {
+          s.fixtures = fixtures
+          s.fixturesLoaded = true
+          s.fixturesError = null
+          // Seed score + gameRef slots for any game id not yet present.
+          // Preserves scores that already arrived via importState (Supabase
+          // fetch races with fixtures load) — only initialises missing slots.
+          for (const g of fixtures) {
+            if (!s.games[g.id]) s.games[g.id] = { scoreA: null, scoreB: null }
+            if (!s.gameRefs[g.id]) s.gameRefs[g.id] = emptyAssignment()
+          }
+        }),
+
+      setFixturesError: (err) =>
+        set((s) => {
+          s.fixturesError = err
+          s.fixturesLoaded = true // stop the loading state even on error
+        }),
 
       setScore: (id, side, value) => {
         set((s) => {
@@ -246,18 +284,27 @@ export const useTournamentStore = create<TournamentStore>()(
           // leave that slice as-is rather than nuking local progress
           // with empty defaults.
           if (incoming.games) {
-            const base = initialGames()
+            // When TOURNAMENT.games is empty (post-migration, fixtures
+            // come from Supabase), accept every game id from the
+            // incoming payload without filtering. When the constant
+            // still carries hardcoded games, restrict to known ids so
+            // stale data from old seasons doesn't sneak in.
+            const known = initialGames()
+            const hasKnown = Object.keys(known).length > 0
+            const base: Record<GameId, GameScore> = hasKnown ? known : {}
             for (const id of Object.keys(incoming.games)) {
               const numId = Number(id)
-              if (base[numId]) base[numId] = incoming.games[numId]
+              if (!hasKnown || base[numId]) base[numId] = incoming.games[numId]
             }
             s.games = base
           }
           if (incoming.gameRefs) {
-            const base = initialGameRefs()
+            const known = initialGameRefs()
+            const hasKnown = Object.keys(known).length > 0
+            const base: Record<GameId, GameRefAssignment> = hasKnown ? known : {}
             for (const id of Object.keys(incoming.gameRefs)) {
               const numId = Number(id)
-              if (base[numId]) {
+              if (!hasKnown || base[numId]) {
                 const inc = incoming.gameRefs[numId]
                 base[numId] = {
                   head: inc.head ?? null,
@@ -280,25 +327,36 @@ export const useTournamentStore = create<TournamentStore>()(
       // length.
       onRehydrateStorage: () => (state) => {
         if (!state) return
-        const games = initialGames()
-        for (const id of Object.keys(state.games)) {
-          const numId = Number(id)
-          if (games[numId]) games[numId] = state.games[numId]
-        }
-        state.games = games
+        // When TOURNAMENT.games is populated (pre-migration), reconcile
+        // the cached state against it: drop unknown ids and default
+        // missing ones. When it is empty (post-migration, fixtures load
+        // from Supabase), leave the cached state untouched so it serves
+        // as a visual bootstrap until importState overlays Supabase data.
+        const knownGames = initialGames()
+        if (Object.keys(knownGames).length > 0) {
+          for (const id of Object.keys(state.games)) {
+            const numId = Number(id)
+            if (knownGames[numId]) knownGames[numId] = state.games[numId]
+          }
+          state.games = knownGames
 
-        const gameRefs = initialGameRefs()
-        for (const id of Object.keys(state.gameRefs)) {
-          const numId = Number(id)
-          if (gameRefs[numId]) {
-            const inc = state.gameRefs[numId]
-            gameRefs[numId] = {
-              head: inc.head ?? null,
-              lines: normalizeLines(inc.lines),
+          const knownRefs = initialGameRefs()
+          for (const id of Object.keys(state.gameRefs)) {
+            const numId = Number(id)
+            if (knownRefs[numId]) {
+              const inc = state.gameRefs[numId]
+              knownRefs[numId] = {
+                head: inc.head ?? null,
+                lines: normalizeLines(inc.lines),
+              }
             }
           }
+          state.gameRefs = knownRefs
         }
-        state.gameRefs = gameRefs
+        // fixtures is transient — never persisted, always re-fetched.
+        state.fixtures = []
+        state.fixturesLoaded = false
+        state.fixturesError = null
       },
     },
   ),

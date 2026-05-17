@@ -32,11 +32,12 @@ interface RefAssignmentRowProps {
 }
 
 export function RefAssignmentRow({ game }: RefAssignmentRowProps) {
-  const games = useTournamentStore((s) => s.games)
+  const games    = useTournamentStore((s) => s.games)
+  const fixtures = useTournamentStore((s) => s.fixtures)
   const gameRefs = useTournamentStore((s) => s.gameRefs)
-  const refsMap = useTournamentStore((s) => s.refs)
-  const setHead = useTournamentStore((s) => s.setHead)
-  const setLine = useTournamentStore((s) => s.setLine)
+  const refsMap  = useTournamentStore((s) => s.refs)
+  const setHead  = useTournamentStore((s) => s.setHead)
+  const setLine  = useTournamentStore((s) => s.setLine)
 
   const sortedRefs = useMemo(
     () => Object.values(refsMap).sort((a, b) => a.name.localeCompare(b.name)),
@@ -47,13 +48,14 @@ export function RefAssignmentRow({ game }: RefAssignmentRowProps) {
     head: null,
     lines: Array(TOURNAMENT.linesPerGame).fill(null),
   }
-  const playingTeams = teamsPlayingAtSlot(TOURNAMENT, games, game.id)
-  const refsPlayingNow = refsBusyAsPlayers(TOURNAMENT, refsMap, games, game.id)
-  const takenForHead = refsTakenForSlot(TOURNAMENT, games, gameRefs, game.id, 'head')
+  const t = { ...TOURNAMENT, games: fixtures }
+  const playingTeams = teamsPlayingAtSlot(t, games, game.id)
+  const refsPlayingNow = refsBusyAsPlayers(t, refsMap, games, game.id)
+  const takenForHead = refsTakenForSlot(t, games, gameRefs, game.id, 'head')
 
-  const getStar = () => computeStarTeam(TOURNAMENT, games)
-  const teamA = resolveTeam(TOURNAMENT, games, game.teamA, getStar) ?? teamLabel(game.teamA)
-  const teamB = resolveTeam(TOURNAMENT, games, game.teamB, getStar) ?? teamLabel(game.teamB)
+  const getStar = () => computeStarTeam(t, games)
+  const teamA = resolveTeam(t, games, game.teamA, getStar) ?? teamLabel(game.teamA)
+  const teamB = resolveTeam(t, games, game.teamB, getStar) ?? teamLabel(game.teamB)
 
   return (
     <div className="bg-card border rounded-lg p-3 sm:p-4">
