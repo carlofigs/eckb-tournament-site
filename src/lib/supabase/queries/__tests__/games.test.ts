@@ -71,7 +71,7 @@ describe('fetchTournamentGames', () => {
 
   it('maps R1 rows to Games with literal TeamRefs', async () => {
     mockQuery(R1_ROWS)
-    const games = await fetchTournamentGames('summer-2026')
+    const games = await fetchTournamentGames('sydney-2026-summer')
 
     expect(games).toHaveLength(2)
     expect(games[0]).toEqual({
@@ -86,7 +86,7 @@ describe('fetchTournamentGames', () => {
 
   it('maps KO rows to Games with dynamic TeamRefs', async () => {
     mockQuery(KO_ROWS)
-    const games = await fetchTournamentGames('summer-2026')
+    const games = await fetchTournamentGames('sydney-2026-summer')
 
     expect(games[0]).toEqual({
       id: 9, round: 'QF', time: '2:30 pm', field: 'Road',
@@ -100,17 +100,17 @@ describe('fetchTournamentGames', () => {
 
   it('queries with correct filters and ordering', async () => {
     const chain = mockQuery(R1_ROWS)
-    await fetchTournamentGames('summer-2026')
+    await fetchTournamentGames('sydney-2026-summer')
 
     expect(supabase!.from).toHaveBeenCalledWith('games')
     expect(chain.eq).toHaveBeenCalledWith('context_type', 'tournament')
-    expect(chain.eq).toHaveBeenCalledWith('context_id', 'summer-2026')
+    expect(chain.eq).toHaveBeenCalledWith('context_id', 'sydney-2026-summer')
     expect(chain.order).toHaveBeenCalledWith('game_number')
   })
 
   it('throws when the query returns an error', async () => {
     mockQuery([], { message: 'relation "games" does not exist' })
-    await expect(fetchTournamentGames('summer-2026')).rejects.toMatchObject({
+    await expect(fetchTournamentGames('sydney-2026-summer')).rejects.toMatchObject({
       message: 'relation "games" does not exist',
     })
   })

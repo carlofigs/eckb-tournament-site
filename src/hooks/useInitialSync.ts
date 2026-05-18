@@ -59,9 +59,10 @@ export function useInitialSync() {
     const [scoresResult, gameRefsResult, rosterResult, announcementResult] =
       await Promise.all([
         supabase
-          .from('game_scores')
-          .select('game_id, score_a, score_b')
-          .eq('tournament_id', TOURNAMENT.id),
+          .from('games')
+          .select('game_number, game_scores(score_a, score_b)')
+          .eq('context_id', TOURNAMENT.id)
+          .not('round', 'is', null),
         supabase
           .from('game_refs')
           .select('game_id, head, lines')
@@ -109,7 +110,16 @@ export function useInitialSync() {
     if (!scoresResult.error) {
       const games: Record<GameId, GameScore> = {}
       for (const row of scoresResult.data ?? []) {
-        games[row.game_id] = { scoreA: row.score_a, scoreB: row.score_b }
+        // Query starts from games (filtered by context) and embeds game_scores
+        // as a one-element array via the game_uuid FK. Skip games with no score yet.
+        const score = (row as Record<string, unknown> & {
+          game_number: number
+          game_scores?: Array<{ score_a: number; score_b: number }>
+        })
+        const s = score.game_scores?.[0]
+        if (s != null) {
+          games[score.game_number] = { scoreA: s.score_a, scoreB: s.score_b }
+        }
       }
       partial.games = games
     }

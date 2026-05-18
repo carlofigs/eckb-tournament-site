@@ -14,7 +14,7 @@ import type { Tournament } from '@/lib/schemas'
  * for continuity with the ref group chat schedule.
  */
 export const summer2026: Tournament = {
-  id: 'summer-2026',
+  id: 'sydney-2026-summer',
   title: 'Summer 2026 Kickball Tournament',
   dateLabel: 'Sunday · 10 May 2026',
 
