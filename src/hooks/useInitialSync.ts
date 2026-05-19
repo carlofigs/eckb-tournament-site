@@ -59,7 +59,7 @@ export function useInitialSync() {
         setFixturesError(msg)
       })
 
-    const [scoresResult, gameRefsResult, rosterResult, announcementResult] =
+    const [scoresResult, gameUuidsResult, rosterResult, announcementResult] =
       await Promise.all([
         // Scores: embed game_scores via game_uuid FK; round IS NOT NULL
         // scopes to tournament games only.
@@ -68,12 +68,14 @@ export function useInitialSync() {
           .select('game_number, game_scores(score_a, score_b)')
           .eq('context_id', TOURNAMENT.id)
           .not('round', 'is', null),
-        // Ref assignments: game_refs no longer has tournament_id — join
-        // from games and embed game_refs via game_uuid FK (same pattern
-        // as scores). Returns one game_refs row per game at most.
+        // UUID lookup: game_refs no longer has tournament_id — we need the
+        // games.id (UUID) → game_number mapping so we can query game_refs
+        // directly with .in('game_uuid', uuids). Embedding game_refs from
+        // games is avoided: if PostgREST can't resolve the FK it silently
+        // returns empty arrays and wipes the store.
         supabase
           .from('games')
-          .select('game_number, game_refs(head, lines)')
+          .select('id, game_number')
           .eq('context_id', TOURNAMENT.id)
           .not('round', 'is', null),
         // Ref roster: tournament_id was renamed to season_id in GRIMMERIE.
@@ -94,8 +96,8 @@ export function useInitialSync() {
     if (scoresResult.error) {
       console.warn('Supabase scores fetch failed:', scoresResult.error.message)
     }
-    if (gameRefsResult.error) {
-      console.warn('Supabase game_refs fetch failed:', gameRefsResult.error.message)
+    if (gameUuidsResult.error) {
+      console.warn('Supabase game UUID lookup failed:', gameUuidsResult.error.message)
     }
     if (rosterResult.error) {
       console.warn('Supabase refs fetch failed:', rosterResult.error.message)
@@ -134,22 +136,38 @@ export function useInitialSync() {
       partial.games = games
     }
 
-    if (!gameRefsResult.error) {
-      const gameRefs: Record<GameId, GameRefAssignment> = {}
-      for (const row of (gameRefsResult.data ?? []) as Array<{
-        game_number: number
-        game_refs?: Array<{ head: string | null; lines: LineSlot[] | null }>
-      }>) {
-        // game_refs is embedded as a one-element array (one row per game).
-        const assignment = row.game_refs?.[0]
-        if (assignment) {
-          gameRefs[row.game_number] = {
-            head: assignment.head ?? null,
-            lines: ((assignment.lines as LineSlot[] | null) ?? []) as LineSlot[],
+    // game_refs: query directly using the UUID→game_number map from above.
+    // Avoids embed entirely — .in() on the main table is always reliable.
+    if (!gameUuidsResult.error && (gameUuidsResult.data ?? []).length > 0) {
+      const uuidToNumber: Record<string, GameId> = {}
+      for (const row of gameUuidsResult.data!) {
+        uuidToNumber[row.id as string] = row.game_number as GameId
+      }
+      const uuids = Object.keys(uuidToNumber)
+
+      const gameRefsResult = await supabase
+        .from('game_refs')
+        .select('game_uuid, head, lines')
+        .in('game_uuid', uuids)
+
+      if (gameRefsResult.error) {
+        console.warn('Supabase game_refs fetch failed:', gameRefsResult.error.message)
+      } else {
+        const gameRefs: Record<GameId, GameRefAssignment> = {}
+        for (const row of gameRefsResult.data ?? []) {
+          const gameNumber = uuidToNumber[row.game_uuid as string]
+          if (gameNumber != null) {
+            gameRefs[gameNumber] = {
+              head: (row.head as string | null) ?? null,
+              lines: ((row.lines as LineSlot[] | null) ?? []) as LineSlot[],
+            }
           }
         }
+        // Only write if at least one assignment came back — an empty result
+        // means no assignments exist yet (not a fetch failure), so we still
+        // set it to clear any stale local state.
+        partial.gameRefs = gameRefs
       }
-      partial.gameRefs = gameRefs
     }
 
     // Roster: if the refs query came back successful AND empty, seed
