@@ -1,4 +1,5 @@
 import { Swatch } from '@/components/Swatch'
+import { useTeamDisplay } from '@/hooks/useTeamDisplay'
 import type { TeamName } from '@/lib/schemas'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +18,11 @@ interface TeamRowProps {
 }
 
 export function TeamRow({ team, label, state }: TeamRowProps) {
+  const { displayName, emoji } = useTeamDisplay(team)
+  // Prefer display_name from season_teams; fall back to the label the
+  // parent computed (which is already the bare colour name or "Winner of G5").
+  const resolvedLabel = displayName ?? label
+
   return (
     <div className="flex items-center gap-2 py-1 [&+&]:border-t [&+&]:border-dashed [&+&]:border-border">
       <Swatch team={team} />
@@ -28,7 +34,8 @@ export function TeamRow({ team, label, state }: TeamRowProps) {
           state === 'loser' && 'text-muted-foreground line-through',
         )}
       >
-        {label}
+        {emoji && <span aria-hidden className="mr-0.5">{emoji}</span>}
+        {resolvedLabel}
         {state === 'winner' && <span aria-hidden> ✓</span>}
       </span>
     </div>

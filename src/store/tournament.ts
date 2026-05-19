@@ -10,6 +10,8 @@ import type {
   LineSlot,
   Ref,
   RefId,
+  TeamMeta,
+  TeamName,
   TournamentState,
 } from '@/lib/schemas'
 import { TOURNAMENT } from '@/lib/tournament'
@@ -97,6 +99,15 @@ interface TournamentStore extends TournamentState {
   setFixtures: (fixtures: Game[]) => void
   setFixturesError: (err: string) => void
 
+  /**
+   * Rich team display metadata from public.season_teams. Populated by
+   * useInitialSync when TOURNAMENT.seasonId is set. Empty for
+   * tournaments that predate the GLINDA team-naming pattern — components
+   * fall back to the bare colour name when a team's entry is missing.
+   */
+  teamMeta: Record<TeamName, TeamMeta>
+  setTeamMeta: (meta: Record<TeamName, TeamMeta>) => void
+
   /** User-driven mutations: optimistic local update + push to Supabase. */
   setScore: (id: GameId, side: 'A' | 'B', value: number | null) => void
   setHead: (id: GameId, refId: RefId | null) => void
@@ -138,6 +149,10 @@ export const useTournamentStore = create<TournamentStore>()(
       fixtures: [],
       fixturesLoaded: false,
       fixturesError: null,
+
+      // ── Team display metadata (loaded from public.season_teams) ────
+      teamMeta: {},
+      setTeamMeta: (meta) => set((s) => { s.teamMeta = meta }),
 
       setFixtures: (fixtures) =>
         set((s) => {
@@ -353,10 +368,12 @@ export const useTournamentStore = create<TournamentStore>()(
           }
           state.gameRefs = knownRefs
         }
-        // fixtures is transient — never persisted, always re-fetched.
+        // fixtures + teamMeta are transient — never persisted, always
+        // re-fetched from Supabase on mount.
         state.fixtures = []
         state.fixturesLoaded = false
         state.fixturesError = null
+        state.teamMeta = {}
       },
     },
   ),

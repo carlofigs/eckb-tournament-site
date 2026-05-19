@@ -13,6 +13,8 @@ import type {
   LineSlot,
   Ref,
   RefId,
+  TeamMeta,
+  TeamName,
 } from '@/lib/schemas'
 
 /**
@@ -39,6 +41,7 @@ export function useInitialSync() {
   const importState = useTournamentStore((s) => s.importState)
   const setFixtures = useTournamentStore((s) => s.setFixtures)
   const setFixturesError = useTournamentStore((s) => s.setFixturesError)
+  const setTeamMeta = useTournamentStore((s) => s.setTeamMeta)
   const markSync = useSyncStore((s) => s.markSync)
 
   const fetchAll = useCallback(async () => {
@@ -172,13 +175,38 @@ export function useInitialSync() {
         : { message: '', visible: false }
     }
 
+    // Team metadata: only fetched when the tournament config declares a
+    // seasonId. Tournaments that predate the GLINDA team-naming pattern
+    // (e.g. Summer 2026) leave seasonId undefined — display falls back
+    // to the bare colour name in components.
+    if (TOURNAMENT.seasonId) {
+      const teamMetaResult = await supabase
+        .from('season_teams')
+        .select('team_color, display_name, emoji, color_hex')
+        .eq('season_id', TOURNAMENT.seasonId)
+
+      if (teamMetaResult.error) {
+        console.warn('Supabase season_teams fetch failed:', teamMetaResult.error.message)
+      } else {
+        const meta: Record<TeamName, TeamMeta> = {}
+        for (const row of teamMetaResult.data ?? []) {
+          meta[row.team_color] = {
+            displayName: row.display_name ?? null,
+            emoji: row.emoji ?? null,
+            colorHex: row.color_hex ?? null,
+          }
+        }
+        setTeamMeta(meta)
+      }
+    }
+
     // Only mark synced if at least one slice came back. Otherwise the
     // Account page would lie ("Last sync: just now") on a totally
     // failed fetch.
     if (Object.keys(partial).length === 0) return
     importState(partial)
     markSync()
-  }, [importState, markSync])
+  }, [importState, setTeamMeta, markSync])
 
   useEffect(() => {
     if (!supabase) return

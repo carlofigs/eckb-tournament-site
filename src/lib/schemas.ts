@@ -20,6 +20,17 @@ export interface Team {
   colour: string
 }
 
+/**
+ * Rich display metadata fetched from public.season_teams at runtime.
+ * Null fields mean the data wasn't populated — components fall back
+ * to the bare team colour name in that case.
+ */
+export interface TeamMeta {
+  displayName: string | null
+  emoji: string | null
+  colorHex: string | null
+}
+
 /* ── Game ──────────────────────────────────────────────────────────── */
 /** Reference to a team that resolves at render time. */
 export type TeamRef =
@@ -98,11 +109,23 @@ export interface GameRefAssignment {
 /* ── Tournament config ─────────────────────────────────────────────── */
 export interface Tournament {
   /**
-   * Stable id used as the `tournament_id` foreign key in Supabase
-   * (e.g. "summer-2026"). Must be unique across tournaments and
-   * never change once data has been written.
+   * Stable id used as the `context_id` discriminator in Supabase
+   * (e.g. "sydney-2026-summer"). Must be unique across tournaments
+   * and never change once data has been written.
    */
   id: string
+  /**
+   * The season this tournament belongs to (e.g. "sydney-2026").
+   * When set, `useInitialSync` fetches `season_teams` for this
+   * season and populates the `teamMeta` store with `display_name`,
+   * `emoji`, and `color_hex`. Leave undefined for tournaments that
+   * predate the GLINDA team-naming pattern — display falls back to
+   * the bare team colour name.
+   *
+   * TODO (next tournament setup): populate this field and ensure
+   * `season_teams` rows include `display_name` and `emoji`.
+   */
+  seasonId?: string
   title: string
   /** Display string, e.g. "Sunday · 10 May 2026" */
   dateLabel: string

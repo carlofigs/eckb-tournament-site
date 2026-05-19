@@ -8,8 +8,24 @@ import {
   statusLabel,
   statusSortKey,
 } from '@/lib/standings'
+import { useTeamDisplay } from '@/hooks/useTeamDisplay'
 import { Swatch } from '@/components/Swatch'
 import { cn } from '@/lib/utils'
+import type { TeamName } from '@/lib/schemas'
+
+/** Colour dot + optional emoji + display name (or bare colour word). */
+function TeamNameCell({ team }: { team: TeamName }) {
+  const { displayName, emoji } = useTeamDisplay(team)
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Swatch team={team} />
+      <span>
+        {emoji && <span aria-hidden className="mr-0.5">{emoji}</span>}
+        {displayName ?? team}
+      </span>
+    </span>
+  )
+}
 
 export function Standings() {
   const games    = useTournamentStore((s) => s.games)
@@ -98,10 +114,7 @@ function LoserTable({ losers }: { losers: ReturnType<typeof r1Losers> }) {
                   {i + 1}
                 </td>
                 <td className="px-2 py-2 font-bold text-left">
-                  <span className="inline-flex items-center gap-2">
-                    <Swatch team={l.team} />
-                    {l.team}
-                  </span>
+                  <TeamNameCell team={l.team} />
                 </td>
                 <td className="px-2 py-2">G{l.gameId}</td>
                 <td className="px-2 py-2">{Math.abs(l.runDiff)}</td>
@@ -172,10 +185,7 @@ function CurrentStandingsTable() {
                   {statusLabel(row.status)}
                 </td>
                 <td className="px-2 py-2 font-bold">
-                  <span className="inline-flex items-center gap-2">
-                    <Swatch team={row.team} />
-                    {row.team}
-                  </span>
+                  <TeamNameCell team={row.team} />
                 </td>
               </tr>
             )

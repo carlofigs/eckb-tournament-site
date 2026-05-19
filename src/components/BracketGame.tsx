@@ -3,6 +3,7 @@ import { TOURNAMENT } from '@/lib/tournament'
 import { useTournamentStore } from '@/store/tournament'
 import { isComplete, getWinner, resolveTeam, teamLabel } from '@/lib/games'
 import { computeStarTeam } from '@/lib/star'
+import { useTeamDisplay } from '@/hooks/useTeamDisplay'
 import { Swatch } from '@/components/Swatch'
 import { RefBadges } from '@/components/RefBadges'
 import { cn } from '@/lib/utils'
@@ -69,6 +70,8 @@ interface BracketTeamProps {
 }
 
 function BracketTeam({ team, label, score, decided, isWinner }: BracketTeamProps) {
+  const { displayName, emoji } = useTeamDisplay(team)
+  const resolvedLabel = displayName ?? label
   const isLoser = decided && !isWinner
   return (
     <div
@@ -79,7 +82,10 @@ function BracketTeam({ team, label, score, decided, isWinner }: BracketTeamProps
       )}
     >
       <Swatch team={team} />
-      <span className="truncate">{label}</span>
+      <span className="truncate">
+        {emoji && <span aria-hidden className="mr-0.5">{emoji}</span>}
+        {resolvedLabel}
+      </span>
       <span
         className={cn(
           'ml-auto font-extrabold min-w-6 text-right',
