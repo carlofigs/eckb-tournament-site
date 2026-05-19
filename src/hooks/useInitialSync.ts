@@ -61,19 +61,26 @@ export function useInitialSync() {
 
     const [scoresResult, gameRefsResult, rosterResult, announcementResult] =
       await Promise.all([
+        // Scores: embed game_scores via game_uuid FK; round IS NOT NULL
+        // scopes to tournament games only.
         supabase
           .from('games')
           .select('game_number, game_scores(score_a, score_b)')
           .eq('context_id', TOURNAMENT.id)
           .not('round', 'is', null),
+        // Ref assignments: game_refs no longer has tournament_id — join
+        // from games and embed game_refs via game_uuid FK (same pattern
+        // as scores). Returns one game_refs row per game at most.
         supabase
-          .from('game_refs')
-          .select('game_id, head, lines')
-          .eq('tournament_id', TOURNAMENT.id),
+          .from('games')
+          .select('game_number, game_refs(head, lines)')
+          .eq('context_id', TOURNAMENT.id)
+          .not('round', 'is', null),
+        // Ref roster: tournament_id was renamed to season_id in GRIMMERIE.
         supabase
           .from('refs')
           .select('ref_id, name, head_eligible, team, pin')
-          .eq('tournament_id', TOURNAMENT.id),
+          .eq('season_id', TOURNAMENT.id),
         supabase
           .from('announcements')
           .select('message, visible')
@@ -129,10 +136,17 @@ export function useInitialSync() {
 
     if (!gameRefsResult.error) {
       const gameRefs: Record<GameId, GameRefAssignment> = {}
-      for (const row of gameRefsResult.data ?? []) {
-        gameRefs[row.game_id] = {
-          head: row.head,
-          lines: ((row.lines as LineSlot[] | null) ?? []) as LineSlot[],
+      for (const row of (gameRefsResult.data ?? []) as Array<{
+        game_number: number
+        game_refs?: Array<{ head: string | null; lines: LineSlot[] | null }>
+      }>) {
+        // game_refs is embedded as a one-element array (one row per game).
+        const assignment = row.game_refs?.[0]
+        if (assignment) {
+          gameRefs[row.game_number] = {
+            head: assignment.head ?? null,
+            lines: ((assignment.lines as LineSlot[] | null) ?? []) as LineSlot[],
+          }
         }
       }
       partial.gameRefs = gameRefs
